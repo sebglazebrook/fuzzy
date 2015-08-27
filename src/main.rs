@@ -4,7 +4,6 @@ extern crate rustbox;
 use std::env;
 use rustbox::{RustBox};
 use std::default::Default;
-use std::error::Error;
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
@@ -37,7 +36,7 @@ fn main() {
     thread::sleep_ms(50); // wait until some results are found, do this better
 
     // capture the search phrase
-    let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(terminal.clone(), file_finder.clone())));
+    let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(file_finder.clone())));
     let local_tx = tx.clone(); let local_search_phrase = search_phrase.clone();
     let local_terminal = terminal.clone();
     threads.push(true);

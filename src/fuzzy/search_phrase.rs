@@ -3,40 +3,18 @@ extern crate regex;
 use regex::Regex;
 use std::sync::{Arc, Mutex};
 use std::ops::Add;
-use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;
-
-pub struct SearchPhraseController;
-
-fn no_op_closure() -> Box<Fn(String) -> () + Send> {
-    Box::new(|string: String| {})
-}
 
 pub struct SearchPhrase {
     pub content: String,
-    change_listener: Box<Fn(String) -> () + Send>,
-    terminal: Arc<Terminal>,
     file_finder: Arc<Mutex<FileFinder>>,
 }
 
 impl SearchPhrase {
 
-    pub fn init(terminal: Arc<Terminal>, file_finder: Arc<Mutex<FileFinder>>) -> SearchPhrase {
-        let no_op_closure = no_op_closure();
+    pub fn init(file_finder: Arc<Mutex<FileFinder>>) -> SearchPhrase {
         SearchPhrase { 
             content: String::new(),
-            change_listener: no_op_closure,
-            terminal: terminal,
-            file_finder: file_finder,
-        }
-    }
-
-    pub fn from_string(string: &str, terminal: Arc<Terminal>, file_finder: Arc<Mutex<FileFinder>>) -> SearchPhrase {
-        let no_op_closure = no_op_closure();
-        SearchPhrase { 
-            content: string.to_string(),
-            change_listener: no_op_closure,
-            terminal: terminal,
             file_finder: file_finder,
         }
     }
@@ -56,6 +34,7 @@ impl SearchPhrase {
             regex_phrase.push(character);
         }
         Regex::new(&regex_phrase).unwrap()
+
     }
 
 }
