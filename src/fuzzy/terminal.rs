@@ -38,12 +38,13 @@ impl Terminal {
                                 });
                             }
                             Some(Key::Backspace) => {
+                                let index: usize;
                                 if character_index != 0 {
-                                    let index =  character_index - 1;
+                                    index =  character_index - 1;
                                 } else {
-                                    let index =  character_index;
+                                    index =  character_index;
                                 }
-                                rustbox.print(character_index - 1, 0, rustbox::RB_NORMAL, Color::White, Color::Black, " ");
+                                rustbox.print(index, 0, rustbox::RB_NORMAL, Color::White, Color::Black, " ");
                                 rustbox.present();
                                 character_index = character_index - 1;
 
@@ -80,6 +81,7 @@ impl Terminal {
     }
 
     pub fn wait_until_exit(&self) {
+
         let mut done = false;
         while !done {
             let rustbox = self.rustbox.clone();
