@@ -46,7 +46,9 @@ impl Terminal {
                                 }
                                 rustbox.print(index, 0, rustbox::RB_NORMAL, Color::White, Color::Black, " ");
                                 rustbox.present();
-                                character_index = character_index - 1;
+                                if character_index != 0 {
+                                    character_index = character_index - 1;
+                                }
 
                                 // have to do this as a new thread
                                 let local_search_phrase = search_phrase.clone();
