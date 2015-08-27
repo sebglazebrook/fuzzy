@@ -1,8 +1,8 @@
 extern crate regex;
+
 use regex::Regex;
 use std::sync::{Arc, Mutex};
 use std::ops::Add;
-
 use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;
 
