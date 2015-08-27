@@ -2,7 +2,6 @@ extern crate regex;
 
 use regex::Regex;
 use std::sync::{Arc, Mutex};
-use std::ops::Add;
 use fuzzy::file_finder::FileFinder;
 
 pub struct SearchPhrase {

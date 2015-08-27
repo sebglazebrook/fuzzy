@@ -31,7 +31,7 @@ fn main() {
         let path = env::current_dir().unwrap(); // maybe user can send it through as an argument?
         let mut locked_local_file_finder = local_file_finder.lock().unwrap();
         locked_local_file_finder.start(&path);
-        local_tx.send(1);
+        local_tx.send(1)
     });
     thread::sleep_ms(50); // wait until some results are found, do this better
 
@@ -42,10 +42,10 @@ fn main() {
     threads.push(true);
     thread::spawn(move || {
         local_terminal.on_stdin(local_search_phrase);
-        local_tx.send(1);
+        local_tx.send(1)
     });
 
-    for thread in threads.iter() {
+    for _ in threads.iter() {
         rx.recv().ok().expect("Could not receive answer");
     }
 

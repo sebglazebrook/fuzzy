@@ -14,7 +14,7 @@ pub struct Terminal {
 
 impl Terminal {
 
-    pub fn on_stdin<'a>(&self, mut search_phrase: Arc<Mutex<SearchPhrase>>) {
+    pub fn on_stdin<'a>(&self, search_phrase: Arc<Mutex<SearchPhrase>>) {
         let mut character_index = 0;
         let mut done = false;
         while !done {
@@ -31,7 +31,7 @@ impl Terminal {
                                 character_index = character_index + 1;
 
                                 // have to do this as a new thread
-                                let mut local_search_phrase = search_phrase.clone();
+                                let local_search_phrase = search_phrase.clone();
                                 thread::spawn(move || {
                                     let mut local_search_phrase = local_search_phrase.lock().unwrap();
                                     local_search_phrase.update(c.to_string());
@@ -90,7 +90,7 @@ impl Terminal {
         let height = rustbox.height();
         let width = rustbox.width();
         let mut empty_line = String::new();
-        for x in 1..width {
+        for _ in 1..width {
             empty_line = empty_line.clone() + " ";
         }
         for x in 1..height {
