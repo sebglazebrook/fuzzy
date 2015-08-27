@@ -22,11 +22,10 @@ fn main() {
         Result::Err(e) => panic!("{}", e),
     };
     let terminal = Arc::new(Terminal {rustbox: rustbox, results: vec![] } );
-    let mut file_finder = Arc::new(Mutex::new(FileFinder::init(terminal.clone())));
+    let file_finder = Arc::new(Mutex::new(FileFinder::init(terminal.clone())));
 
     // fetch all the files
     let local_tx = tx.clone();
-    let local_terminal = terminal.clone();
     let local_file_finder = file_finder.clone();
     threads.push(true);
     thread::spawn(move|| {

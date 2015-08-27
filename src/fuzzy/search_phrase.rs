@@ -43,7 +43,6 @@ impl SearchPhrase {
 
     pub fn update(&mut self, string: String)  {
         self.content = self.content.clone() + &string[..];
-        (self.change_listener)(self.content.clone());
         let file_finder = self.file_finder.clone();
         let locked_file_finder = file_finder.lock().unwrap();
         locked_file_finder.apply_filter(self.to_regex());
@@ -57,10 +56,6 @@ impl SearchPhrase {
             regex_phrase.push(character);
         }
         Regex::new(&regex_phrase).unwrap()
-    }
-
-    pub fn on_change(&mut self, change_listener: Box<Fn(String) -> () + Send>) {
-        self.change_listener = change_listener;
     }
 
 }

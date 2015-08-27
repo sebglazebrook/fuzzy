@@ -6,7 +6,6 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 use fuzzy::search_phrase::SearchPhrase;
 use std::thread;
-use regex::Regex;
 
 pub struct Terminal {
     pub rustbox: Arc<Mutex<RustBox>>,
