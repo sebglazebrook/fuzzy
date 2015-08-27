@@ -25,6 +25,14 @@ impl SearchPhrase {
         locked_file_finder.apply_filter(self.to_regex());
     }
 
+    pub fn delete_last(&mut self)  {
+        let new_length = self.content.len() - 1;
+        self.content = self.content.clone()[..new_length].to_string();
+        let file_finder = self.file_finder.clone();
+        let locked_file_finder = file_finder.lock().unwrap();
+        locked_file_finder.apply_filter(self.to_regex());
+    }
+
     pub fn to_regex(&self) -> Regex {
         let mut regex_phrase = String::new();
         for character in self.content.chars() {

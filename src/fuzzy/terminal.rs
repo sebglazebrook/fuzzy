@@ -37,6 +37,23 @@ impl Terminal {
                                     local_search_phrase.update(c.to_string());
                                 });
                             }
+                            Some(Key::Backspace) => {
+                                if character_index != 0 {
+                                    let index =  character_index - 1;
+                                } else {
+                                    let index =  character_index;
+                                }
+                                rustbox.print(character_index - 1, 0, rustbox::RB_NORMAL, Color::White, Color::Black, " ");
+                                rustbox.present();
+                                character_index = character_index - 1;
+
+                                // have to do this as a new thread
+                                let local_search_phrase = search_phrase.clone();
+                                thread::spawn(move || {
+                                    let mut local_search_phrase = local_search_phrase.lock().unwrap();
+                                    local_search_phrase.delete_last();
+                                });
+                            }
                             Some(Key::Enter) => { done = true; }
                             _ => {  }
                         }
