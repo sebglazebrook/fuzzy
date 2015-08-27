@@ -23,13 +23,13 @@ impl FileFinder {
     pub fn start(&mut self, dir: &Path) {
         for entry in fs::read_dir(dir).unwrap() {
             let entry = entry.unwrap();
-            self.results.push(entry.path().into_os_string().into_string().unwrap());
+            self.results.push(sanitize_file_path(entry.path().into_os_string().into_string().unwrap()));
             let attr = fs::metadata(entry.path()).unwrap();
             if attr.is_dir() {
                 // each one of these could be a new thread ??
                 let further = get_directory_contents(&entry.path().as_path());
                 for item in further.iter() {
-                    self.results.push(item.to_string());
+                    self.results.push(sanitize_file_path(item.to_string()));
                 }
             } 
             self.terminal.show_results(self.results.clone());
@@ -45,6 +45,11 @@ impl FileFinder {
         }
         self.terminal.show_results(matched_results.clone());
     }
+
+}
+
+fn sanitize_file_path(path: String) -> String {
+    path[1..].to_string()
 }
 
 fn get_directory_contents(dir: &Path) -> Vec<String> {
