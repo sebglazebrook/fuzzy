@@ -97,7 +97,5 @@ impl Terminal {
         for x in 1..height {
             rustbox.print(0, x, rustbox::RB_NORMAL, Color::White, Color::Black, &empty_line);
         }
-        //clear_row();
-       // rustbox.clear(); // need to be smarter here as I don't want to clear all rows
     }
 }
