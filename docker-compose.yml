@@ -1,0 +1,13 @@
+data:
+  image: rust-nightly
+  volumes:
+    - /root/.cargo/
+    - /root/.bash_histoy
+  command: ["true"]
+rust:
+  image: rust-nightly
+  volumes:
+    - .:/code
+  volumes_from:
+    - data
+  command: ["bash"]

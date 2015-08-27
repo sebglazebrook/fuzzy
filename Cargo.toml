@@ -2,3 +2,10 @@
 name = "fuzzy"
 version = "0.1.0"
 authors = ["Seb Glazebrook <sebastian.glazebrook@redbubble.com>"]
+
+[dependencies]
+regex = "0.1.8"
+time = "0.1"
+
+[dependencies.rustbox]
+git = "http://github.com/sebglazebrook/rustbox.git"
