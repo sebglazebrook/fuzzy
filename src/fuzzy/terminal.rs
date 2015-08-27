@@ -21,7 +21,7 @@ impl Terminal {
             {
                 let rustbox = self.rustbox.clone();
                 let rustbox = rustbox.lock().unwrap();
-                match rustbox.peek_event(time::Duration::milliseconds(10), false) {
+                match rustbox.peek_event(time::Duration::milliseconds(1), false) {
                     Ok(rustbox::Event::KeyEvent(key)) => {
                         match key {
                             Some(Key::Ctrl('c')) => { break; }
@@ -63,7 +63,7 @@ impl Terminal {
                     _ => {  }
                 }
             }
-            thread::sleep_ms(100);
+            thread::sleep_ms(1);
         }
     }
 
