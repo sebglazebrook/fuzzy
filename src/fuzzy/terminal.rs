@@ -87,6 +87,17 @@ impl Terminal {
     fn clear_results(&self) {
         let rustbox = self.rustbox.clone();
         let rustbox = rustbox.lock().unwrap();
-        rustbox.clear(); // need to be smarter here as I don't want to clear all rows
+        // clear all result rows
+        let height = rustbox.height();
+        let width = rustbox.width();
+        let mut empty_line = String::new();
+        for x in 1..width {
+            empty_line = empty_line.clone() + " ";
+        }
+        for x in 1..height {
+            rustbox.print(0, x, rustbox::RB_NORMAL, Color::White, Color::Black, &empty_line);
+        }
+        //clear_row();
+       // rustbox.clear(); // need to be smarter here as I don't want to clear all rows
     }
 }
