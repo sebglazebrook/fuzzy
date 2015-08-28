@@ -48,7 +48,7 @@ impl FileFinder {
             let attr = fs::metadata(entry.path()).unwrap();
             if attr.is_dir() {
                 // each one of these could be a new thread ??
-                let further = get_directory_contents(&entry.path().as_path());
+                let further = self.filepaths_in_directory(&entry.path().as_path());
                 for item in further.iter() {
                     filepaths.push(sanitize_file_path(item.to_string()).clone());
                 }
@@ -56,26 +56,8 @@ impl FileFinder {
         }
         filepaths
     }
-
 }
 
 fn sanitize_file_path(path: String) -> String {
     path[1..].to_string()
-}
-
-fn get_directory_contents(dir: &Path) -> Vec<String> {
-    let mut results: Vec<String> = vec![];
-    for entry in fs::read_dir(dir).unwrap() {
-        let entry = entry.unwrap();
-        results.push(entry.path().into_os_string().into_string().unwrap());
-        let attr = fs::metadata(entry.path()).unwrap();
-        if attr.is_dir() {
-            // each one of these could be a new thread ??
-            let further = get_directory_contents(&entry.path().as_path());
-            for item in further.iter() {
-                results.push(item.to_string());
-            }
-        } 
-    }
-    results
 }
