@@ -1,8 +1,8 @@
-extern crate regex;
 extern crate rustbox;
+extern crate regex;
 
-use std::env;
 use rustbox::{RustBox};
+use std::env;
 use std::default::Default;
 use std::thread;
 use std::sync::{Arc, Mutex};
@@ -13,28 +13,32 @@ use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;
 
-struct App;
+struct App {
+    threads: Vec<bool>,
+    terminal: Arc<Terminal>,
+    rx: std::sync::mpsc::Receiver<usize>,
+    tx: std::sync::mpsc::Sender<usize>,
+}
 
 impl App {
 
     pub fn new() -> App {
-        App
+        let (tx, rx) = channel();
+        App { 
+            threads: vec![],
+            terminal: Terminal::new(),
+            rx: rx,
+            tx: tx,
+        }
     }
 
-    pub fn start(&self) {
-        let mut threads = vec![];
-        let (tx, rx) = channel();
-        let rustbox = match RustBox::init(Default::default()) {
-            Result::Ok(v) => Arc::new(Mutex::new(v)),
-            Result::Err(e) => panic!("{}", e),
-        };
-        let terminal = Arc::new(Terminal {rustbox: rustbox, results: vec![] } );
-        let file_finder = Arc::new(Mutex::new(FileFinder::init(terminal.clone())));
+    pub fn start(&mut self) {
+        let file_finder = Arc::new(Mutex::new(FileFinder::init(self.terminal.clone())));
 
         // fetch all the files
-        let local_tx = tx.clone();
         let local_file_finder = file_finder.clone();
-        threads.push(true);
+        let local_tx = self.tx.clone();
+        self.threads.push(true);
         thread::spawn(move|| {
             let path = env::current_dir().unwrap(); // maybe user can send it through as an argument?
             let mut locked_local_file_finder = local_file_finder.lock().unwrap();
@@ -45,21 +49,24 @@ impl App {
 
         // capture the search phrase
         let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(file_finder.clone())));
-        let local_tx = tx.clone(); let local_search_phrase = search_phrase.clone();
-        let local_terminal = terminal.clone();
-        threads.push(true);
+        let local_tx = self.tx.clone(); let local_search_phrase = search_phrase.clone();
+        let local_terminal = self.terminal.clone();
+        self.threads.push(true);
         thread::spawn(move || {
             local_terminal.on_stdin(local_search_phrase);
             local_tx.send(1)
         });
 
-        for _ in threads.iter() {
-            rx.recv().ok().expect("Could not receive answer");
+        self.wait_until_exit();
+    }
+
+    // --------- private methods ----------- //
+
+    fn wait_until_exit(&self) {
+        for _ in self.threads.iter() {
+            self.rx.recv().ok().expect("Could not receive answer");
         }
-
-        // wait for everything to finish
-        terminal.wait_until_exit();
-
+        self.terminal.wait_until_exit();
     }
 }
 

@@ -25,7 +25,6 @@ impl FileFinder {
             self.results.push(filepath.clone());
         };
         self.terminal.show_results(self.results.clone());
-
     }
 
     pub fn apply_filter(&self, regex: Regex) {

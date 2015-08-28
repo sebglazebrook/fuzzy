@@ -14,6 +14,14 @@ pub struct Terminal {
 
 impl Terminal {
 
+    pub fn new() -> Arc<Terminal> {
+        let rustbox = match RustBox::init(Default::default()) {
+            Result::Ok(v) => Arc::new(Mutex::new(v)),
+            Result::Err(e) => panic!("{}", e),
+        };
+        Arc::new(Terminal {rustbox: rustbox, results: vec![] } )
+    }
+
     pub fn on_stdin<'a>(&self, search_phrase: Arc<Mutex<SearchPhrase>>) {
         let mut character_index = 0;
         let mut done = false;
