@@ -21,19 +21,11 @@ impl FileFinder {
     }
 
     pub fn start(&mut self, dir: &Path) {
-        for entry in fs::read_dir(dir).unwrap() {
-            let entry = entry.unwrap();
-            self.results.push(sanitize_file_path(entry.path().into_os_string().into_string().unwrap()));
-            let attr = fs::metadata(entry.path()).unwrap();
-            if attr.is_dir() {
-                // each one of these could be a new thread ??
-                let further = get_directory_contents(&entry.path().as_path());
-                for item in further.iter() {
-                    self.results.push(sanitize_file_path(item.to_string()));
-                }
-            } 
-            self.terminal.show_results(self.results.clone());
-        }
+        for filepath in self.filepaths_in_directory(&dir).iter() {
+            self.results.push(filepath.clone());
+        };
+        self.terminal.show_results(self.results.clone());
+
     }
 
     pub fn apply_filter(&self, regex: Regex) {
@@ -44,6 +36,25 @@ impl FileFinder {
             }
         }
         self.terminal.show_results(matched_results.clone());
+    }
+
+    // --------- private methods --------
+
+    fn filepaths_in_directory(&self, dir: &Path) -> Vec<String> {
+        let mut filepaths = vec![];
+        for entry in fs::read_dir(dir).unwrap() {
+            let entry = entry.unwrap();
+            filepaths.push(sanitize_file_path(entry.path().into_os_string().into_string().unwrap()));
+            let attr = fs::metadata(entry.path()).unwrap();
+            if attr.is_dir() {
+                // each one of these could be a new thread ??
+                let further = get_directory_contents(&entry.path().as_path());
+                for item in further.iter() {
+                    filepaths.push(sanitize_file_path(item.to_string()).clone());
+                }
+            }
+        }
+        filepaths
     }
 
 }
