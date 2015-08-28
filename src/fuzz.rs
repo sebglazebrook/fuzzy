@@ -16,6 +16,7 @@ use fuzzy::file_finder::FileFinder;
 struct App {
     threads: Vec<bool>,
     terminal: Arc<Terminal>,
+    file_finder: Arc<Mutex<FileFinder>>,
     rx: std::sync::mpsc::Receiver<usize>,
     tx: std::sync::mpsc::Sender<usize>,
 }
@@ -24,43 +25,50 @@ impl App {
 
     pub fn new() -> App {
         let (tx, rx) = channel();
+        let terminal = Terminal::new();
+        let file_finder = Arc::new(Mutex::new(FileFinder::init(terminal.clone())));
         App { 
             threads: vec![],
-            terminal: Terminal::new(),
+            terminal: terminal,
+            file_finder: file_finder,
             rx: rx,
             tx: tx,
         }
     }
 
     pub fn start(&mut self) {
-        let file_finder = Arc::new(Mutex::new(FileFinder::init(self.terminal.clone())));
-
-        // fetch all the files
-        let local_file_finder = file_finder.clone();
-        let local_tx = self.tx.clone();
-        self.threads.push(true);
-        thread::spawn(move|| {
-            let path = env::current_dir().unwrap(); // maybe user can send it through as an argument?
-            let mut locked_local_file_finder = local_file_finder.lock().unwrap();
-            locked_local_file_finder.start(&path);
-            local_tx.send(1)
-        });
-        thread::sleep_ms(50); // wait until some results are found, do this better
-
-        // capture the search phrase
-        let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(file_finder.clone())));
-        let local_tx = self.tx.clone(); let local_search_phrase = search_phrase.clone();
-        let local_terminal = self.terminal.clone();
-        self.threads.push(true);
-        thread::spawn(move || {
-            local_terminal.on_stdin(local_search_phrase);
-            local_tx.send(1)
-        });
-
+        self.find_files();
+        self.capture_user_input();
         self.wait_until_exit();
     }
 
     // --------- private methods ----------- //
+
+    fn find_files(&mut self) {
+        let file_finder = self.file_finder.clone();
+        let tx = self.tx.clone();
+        self.threads.push(true);
+        thread::spawn(move|| {
+            let path = env::current_dir().unwrap(); // maybe user can send it through as an argument?
+            let mut locked_local_file_finder = file_finder.lock().unwrap();
+            locked_local_file_finder.start(&path);
+            tx.send(1)
+        });
+        thread::sleep_ms(50); // wait until some results are found, do this better
+    }
+
+    fn capture_user_input(&mut self) {
+        // capture the search phrase
+        let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(self.file_finder.clone())));
+        let tx = self.tx.clone(); let local_search_phrase = search_phrase.clone();
+        let local_terminal = self.terminal.clone();
+        self.threads.push(true);
+        thread::spawn(move || {
+            local_terminal.on_stdin(local_search_phrase);
+            tx.send(1)
+        });
+
+    }
 
     fn wait_until_exit(&self) {
         for _ in self.threads.iter() {
