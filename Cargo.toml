@@ -3,6 +3,9 @@ name = "fuzzy"
 version = "0.1.0"
 authors = ["Seb Glazebrook <sebastian.glazebrook@redbubble.com>"]
 
+[lib]
+name = "fuzz"
+
 [dependencies]
 regex = "0.1.8"
 time = "0.1"
