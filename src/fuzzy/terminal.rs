@@ -90,28 +90,6 @@ impl Terminal {
         rustbox.present();
     }
 
-    pub fn wait_until_exit(&self) {
-
-        let mut done = false;
-        while !done {
-            let rustbox = self.rustbox.clone();
-            let rustbox = rustbox.lock().unwrap();
-            println!("Press enter or ctrl+c to exit");
-            match rustbox.poll_event(false) {
-                Ok(rustbox::Event::KeyEvent(key)) => {
-                    match key {
-                        Some(Key::Ctrl('c')) => { break; }
-                        Some(Key::Enter) => { done = true; }
-                        _ => {  }
-                    }
-                },
-                Err(e) => panic!("{}", e.description()),
-                _ => {  }
-            }
-        }
-    }
-
-
     fn clear_results(&self) {
         let rustbox = self.rustbox.clone();
         let rustbox = rustbox.lock().unwrap();

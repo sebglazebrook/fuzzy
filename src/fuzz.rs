@@ -72,7 +72,6 @@ impl App {
         for _ in self.threads.iter() {
             self.rx.recv().ok().expect("Could not receive answer");
         }
-        self.terminal.wait_until_exit();
     }
 }
 
