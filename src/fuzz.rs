@@ -57,7 +57,8 @@ impl App {
 
     fn capture_user_input(&mut self) {
         let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(self.file_finder.clone())));
-        let tx = self.tx.clone(); let local_search_phrase = search_phrase.clone();
+        let tx = self.tx.clone();
+        let local_search_phrase = search_phrase.clone();
         let local_terminal = self.terminal.clone();
         self.threads.push(true);
         thread::spawn(move || {
