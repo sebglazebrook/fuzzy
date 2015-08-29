@@ -25,13 +25,9 @@ impl SearchPhrase {
     }
 
     pub fn delete_last(&mut self)  {
-        let new_length: usize;
-        if self.content.len() != 0 {
-            new_length = self.content.len() - 1;
-        } else {
-            new_length = self.content.len();
-        }
-        self.content = self.content.clone()[..new_length].to_string();
+        let mut new_string = self.content.clone();
+        new_string.pop();
+        self.content = new_string;
         let file_finder = self.file_finder.lock().unwrap();
         file_finder.apply_filter(self.to_regex());
     }
