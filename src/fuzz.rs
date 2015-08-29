@@ -2,7 +2,6 @@ extern crate rustbox;
 extern crate regex;
 
 use std::env;
-use std::default::Default;
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
@@ -25,7 +24,7 @@ impl App {
     pub fn new() -> App {
         let (tx, rx) = channel();
         let terminal = Terminal::new();
-        let file_finder = Arc::new(Mutex::new(FileFinder::init(terminal.clone())));
+        let file_finder = FileFinder::new(terminal.clone());
         App { 
             threads: vec![],
             terminal: terminal,

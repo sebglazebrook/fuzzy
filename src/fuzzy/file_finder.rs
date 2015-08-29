@@ -3,8 +3,8 @@ extern crate regex;
 use regex::Regex;
 use std::path::Path;
 use std::fs::{self, PathExt};
-use std::sync::Arc;
 use fuzzy::terminal::Terminal;
+use std::sync::{Arc, Mutex};
 
 pub struct FileFinder {
     pub results: Vec<String>,
@@ -13,11 +13,8 @@ pub struct FileFinder {
 
 impl FileFinder {
 
-    pub fn init(terminal: Arc<Terminal>) -> FileFinder {
-        FileFinder { 
-            results: vec![],
-            terminal: terminal
-        } 
+    pub fn new(terminal: Arc<Terminal>) -> Arc<Mutex<FileFinder>> {
+        Arc::new(Mutex::new(FileFinder { results: vec![], terminal: terminal }))
     }
 
     pub fn start(&mut self, dir: &Path) {
