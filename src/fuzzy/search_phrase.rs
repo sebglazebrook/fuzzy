@@ -20,9 +20,8 @@ impl SearchPhrase {
 
     pub fn update(&mut self, string: String)  {
         self.content = self.content.clone() + &string[..];
-        let file_finder = self.file_finder.clone();
-        let locked_file_finder = file_finder.lock().unwrap();
-        locked_file_finder.apply_filter(self.to_regex());
+        let file_finder = self.file_finder.lock().unwrap();
+        file_finder.apply_filter(self.to_regex());
     }
 
     pub fn delete_last(&mut self)  {
@@ -33,9 +32,8 @@ impl SearchPhrase {
             new_length = self.content.len();
         }
         self.content = self.content.clone()[..new_length].to_string();
-        let file_finder = self.file_finder.clone();
-        let locked_file_finder = file_finder.lock().unwrap();
-        locked_file_finder.apply_filter(self.to_regex());
+        let file_finder = self.file_finder.lock().unwrap();
+        file_finder.apply_filter(self.to_regex());
     }
 
     pub fn to_regex(&self) -> Regex {
