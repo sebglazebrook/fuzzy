@@ -39,8 +39,7 @@ impl SearchPhrase {
     pub fn to_regex(&self) -> Regex {
         let mut regex_phrase = String::new();
         for character in self.content.chars() {
-            regex_phrase.push('.');
-            regex_phrase.push('*');
+            regex_phrase.push_str(".*");
             regex_phrase.push(character);
         }
         Regex::new(&regex_phrase).unwrap()
