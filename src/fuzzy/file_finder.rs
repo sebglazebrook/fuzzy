@@ -3,35 +3,64 @@ extern crate regex;
 use regex::Regex;
 use std::path::Path;
 use std::fs::{self, PathExt};
-use fuzzy::terminal::Terminal;
 use std::sync::{Arc, Mutex};
+use fuzzy::terminal::Terminal;
+//use fuzzy::result_set::ResultSet;
 
-pub struct FileFinder {
+pub struct ResultSet {
     pub results: Vec<String>,
-    pub terminal: Arc<Terminal>,
 }
 
-impl FileFinder {
+impl ResultSet {
 
-    pub fn new(terminal: Arc<Terminal>) -> Arc<Mutex<FileFinder>> {
-        Arc::new(Mutex::new(FileFinder { results: vec![], terminal: terminal }))
+    pub fn new() -> ResultSet {
+        ResultSet { results: vec![]}
     }
 
-    pub fn start(&mut self, dir: &Path) {
-        for filepath in self.filepaths_in_directory(&dir).iter() {
-            self.results.push(filepath.clone());
-        };
-        self.terminal.show_results(self.results.clone());
+    pub fn add(&mut self, result: String) {
+        self.results.push(result);
     }
 
-    pub fn apply_filter(&self, regex: Regex) {
+    pub fn to_vec(&self) -> Vec<String> {
+        self.results.clone()
+    }
+
+    pub fn apply_filter(&self, regex: Regex) -> Vec<String> {
         let mut matched_results = vec![];
         for content in self.results.iter() {
             if regex.is_match(content) {
                 matched_results.push(content.clone());
             }
         }
-        self.terminal.show_results(matched_results.clone());
+        matched_results
+    }
+}
+
+pub struct FileFinder {
+    pub terminal: Arc<Terminal>,
+    result_set: ResultSet,
+}
+
+impl FileFinder {
+
+    pub fn new(terminal: Arc<Terminal>) -> Arc<Mutex<FileFinder>> {
+        Arc::new(Mutex::new(
+            FileFinder { 
+                terminal: terminal,
+                result_set: ResultSet::new()
+            }
+        ))
+    }
+
+    pub fn start(&mut self, dir: &Path) {
+        for filepath in self.filepaths_in_directory(&dir).iter() {
+            self.result_set.add(filepath.clone())
+        };
+        self.terminal.show_results(self.result_set.to_vec());
+    }
+
+    pub fn apply_filter(&self, regex: Regex) {
+        self.terminal.show_results(self.result_set.apply_filter(regex));
     }
 
     // --------- private methods --------
