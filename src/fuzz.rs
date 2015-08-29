@@ -1,7 +1,6 @@
 extern crate rustbox;
 extern crate regex;
 
-use rustbox::{RustBox};
 use std::env;
 use std::default::Default;
 use std::thread;
