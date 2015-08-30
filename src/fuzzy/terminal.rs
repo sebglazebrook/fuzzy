@@ -137,11 +137,15 @@ impl Terminal {
         // unhighlight the current row
         if hightlighted_result_row[0] > 0 {
             rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::White, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
+            if hightlighted_result_row[0] > 1 {
+                // hightlight the previous row
+                hightlighted_result_row[0] = hightlighted_result_row[0] - 1;
+                rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
+            } else {
+                hightlighted_result_row[0]  = 0
+            }
+            rustbox.present();
         }
-        // hightlight the previous row
-        hightlighted_result_row[0] = hightlighted_result_row[0] - 1;
-        rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
-        rustbox.present();
     }
 
 }
