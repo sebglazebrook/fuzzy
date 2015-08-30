@@ -94,14 +94,12 @@ impl Terminal {
         let rustbox = self.rustbox.clone();
         let rustbox = rustbox.lock().unwrap();
         // clear all result rows
-        let height = rustbox.height();
-        let width = rustbox.width();
         let mut empty_line = String::new();
-        for _ in 1..width {
+        for _ in 1..rustbox.width() {
             empty_line = empty_line.clone() + " ";
         }
-        for x in 1..height {
-            rustbox.print(0, x, rustbox::RB_NORMAL, Color::White, Color::Black, &empty_line);
+        for row in 1..rustbox.height() {
+            rustbox.print(0, row, rustbox::RB_NORMAL, Color::White, Color::Black, &empty_line);
         }
     }
 }
