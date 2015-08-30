@@ -39,9 +39,7 @@ impl SearchPhrase {
             regex_phrase.push(character);
         }
         Regex::new(&regex_phrase).unwrap()
-
     }
-
 }
 
 #[test]
