@@ -127,7 +127,7 @@ impl Terminal {
         }
         // highlight next row
         hightlighted_result_row[0] = hightlighted_result_row[0] + 1;
-        rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Red, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
+        rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
         rustbox.present();
     }
 
@@ -140,7 +140,7 @@ impl Terminal {
         }
         // hightlight the previous row
         hightlighted_result_row[0] = hightlighted_result_row[0] - 1;
-        rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Red, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
+        rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
         rustbox.present();
     }
 
