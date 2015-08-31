@@ -26,6 +26,7 @@ impl FileFinder {
 
     pub fn start(&mut self, dir: &Path) {
         for filepath in self.filepaths_in_directory(&dir).iter() {
+            // TODO paths are absolute, only want relative
             self.result_set.add(filepath.clone())
         };
         self.terminal.show_results(self.result_set.to_vec());
