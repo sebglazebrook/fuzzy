@@ -55,7 +55,11 @@ impl FileFinder {
     }
 
     fn sanitize_file_path(&self, path: String) -> String {
-        path[1..].to_string()
+        if path.starts_with("/") {
+            path[1..].to_string()
+        } else {
+            path
+        }
     }
 }
 
