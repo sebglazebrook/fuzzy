@@ -148,4 +148,13 @@ impl Terminal {
         }
     }
 
+    pub fn has_highlighted_result(&self) -> bool {
+        self.hightlighted_result_row.lock().unwrap()[0] > 0
+    }
+
+    pub fn get_highlighted_result(&self) -> String {
+        let index = self.hightlighted_result_row.lock().unwrap()[0];
+        index.to_string();
+        self.results.lock().unwrap()[index - 1].clone()
+    }
 }

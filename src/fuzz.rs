@@ -34,10 +34,11 @@ impl App {
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self) -> String {
         self.find_files();
         self.capture_user_input();
         self.wait_until_exit();
+        self.get_found_file()
     }
 
     // --------- private methods ----------- //
@@ -72,8 +73,17 @@ impl App {
             self.rx.recv().ok().expect("Could not receive answer");
         }
     }
+
+    fn get_found_file(&self) -> String {
+        if self.terminal.has_highlighted_result() {
+            self.terminal.get_highlighted_result()
+        } else {
+            String::new()
+        }
+    }
 }
 
 pub fn initialize() {
-    App::new().start();
+    let found_file = App::new().start();
+    println!("{}", found_file);
 }
