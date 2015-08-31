@@ -52,7 +52,6 @@ impl App {
             locked_local_file_finder.start(&path);
             tx.send(1)
         });
-        thread::sleep_ms(50); // wait until some results are found, do this better
     }
 
     fn capture_user_input(&mut self) {
