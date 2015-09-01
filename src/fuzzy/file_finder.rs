@@ -44,15 +44,24 @@ impl FileFinder {
     fn filepaths_in_directory(&self, dir: &Path) -> Vec<String> {
         let mut filepaths = vec![];
         for entry in fs::read_dir(dir).unwrap() {
-            let entry = entry.unwrap();
-            filepaths.push(self.clean_file_path(entry.path().into_os_string().into_string().unwrap()));
-            let attr = fs::metadata(entry.path()).unwrap();
-            if attr.is_dir() {
-                // each one of these could be a new thread ??
-                let further = self.filepaths_in_directory(&entry.path().as_path());
-                for item in further.iter() {
-                    filepaths.push(self.clean_file_path(item.to_string()).clone());
+            match entry {
+                Ok(entry) => {
+                    filepaths.push(self.clean_file_path(entry.path().into_os_string().into_string().unwrap()));
+                    let result = fs::metadata(entry.path());
+                    match result {
+                        Ok(metadata) => {
+                            if metadata.is_dir() && !metadata.file_type().is_symlink() {
+                                // each one of these could be a new thread ??
+                                let further = self.filepaths_in_directory(&entry.path().as_path());
+                                for item in further.iter() {
+                                    filepaths.push(self.clean_file_path(item.to_string()).clone());
+                                }
+                            }
+                        }
+                        Err(_) => {}
+                    }
                 }
+                Err(_) => {}
             }
         }
         filepaths
