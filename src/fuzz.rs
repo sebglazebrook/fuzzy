@@ -24,7 +24,7 @@ impl App {
     pub fn new() -> App {
         let (tx, rx) = channel();
         let terminal = Terminal::new();
-        let file_finder = FileFinder::new(terminal.clone());
+        let file_finder = FileFinder::new(terminal.clone(), env::current_dir().unwrap());
         App { 
             threads: vec![],
             terminal: terminal,
@@ -48,9 +48,8 @@ impl App {
         let tx = self.tx.clone();
         self.threads.push(true);
         thread::spawn(move|| {
-            let path = env::current_dir().unwrap(); // maybe user can send it through as an argument?
             let mut locked_local_file_finder = file_finder.lock().unwrap();
-            locked_local_file_finder.start(&path);
+            locked_local_file_finder.start();
             tx.send(1)
         });
     }
