@@ -11,4 +11,8 @@ regex = "0.1.8"
 time = "0.1"
 
 [dependencies.rustbox]
-git = "http://github.com/sebglazebrook/rustbox.git"
+# git = "http://github.com/sebglazebrook/rustbox.git"
+git = "file:/Users/sebastianglazebrook/code/github-forks/rustbox"
+
+# [dependencies.clipboard]
+# git = "https://github.com/aweinstock314/rust-clipboard.git"
