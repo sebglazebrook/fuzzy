@@ -14,6 +14,14 @@ impl ResultSet {
         self.results.push(result);
     }
 
+    pub fn add_many(&mut self, results: Vec<String>, root_dir: &str) {
+        let mut new = vec![];
+        for result in results {
+            new.push(result.replace(root_dir, "")[1..].to_string());
+        }
+        self.results.extend(new);
+    }
+
     pub fn to_vec(&self) -> Vec<String> {
         self.results.clone()
     }

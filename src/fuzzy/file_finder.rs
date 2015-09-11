@@ -1,61 +1,79 @@
 extern crate regex;
 
 use regex::Regex;
-use std::path::Path;
 use std::path::PathBuf;
 use std::fs::{self, PathExt};
 use std::sync::{Arc, Mutex};
 use fuzzy::terminal::Terminal;
 use fuzzy::result_set::ResultSet;
+use std::thread;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc;
 
-
-pub struct FileFinder {
-    pub terminal: Arc<Terminal>,
-    result_set: ResultSet,
-    root_dir: PathBuf
+struct DirectoryScanner {
+    root_dir: PathBuf,
+    filepaths: Vec<String>,
+    threads: usize,
+    rx: Receiver<DirectoryScanner>,
+    tx: Sender<DirectoryScanner>,
 }
 
-impl FileFinder {
+impl DirectoryScanner {
 
-    pub fn new(terminal: Arc<Terminal>, root_dir: PathBuf) -> Arc<Mutex<FileFinder>> {
-        Arc::new(Mutex::new(
-            FileFinder { 
-                terminal: terminal,
-                result_set: ResultSet::new(),
-                root_dir: root_dir,
-            }
-        ))
+    pub fn new(root_dir: PathBuf) -> DirectoryScanner {
+        let (tx, rx) = mpsc::channel();
+        DirectoryScanner{
+            root_dir: root_dir,
+            filepaths: vec![],
+            threads: 0,
+            rx: rx,
+            tx: tx,
+        }
     }
 
-    pub fn start(&mut self) {
-        for filepath in self.filepaths_in_directory(&self.root_dir).iter() {
-            self.result_set.add(filepath.clone())
-        };
-        self.terminal.show_results(self.result_set.to_vec());
-    }
-
-    pub fn apply_filter(&self, regex: Regex) {
-        self.terminal.show_results(self.result_set.apply_filter(regex));
-    }
-
-    // --------- private methods --------
-
-    fn filepaths_in_directory(&self, dir: &Path) -> Vec<String> {
-        let mut filepaths = vec![];
-        for entry in fs::read_dir(dir).unwrap() {
+    pub fn scan(&mut self, current_threads: Arc<Mutex<Vec<bool>>>) {
+        for entry in fs::read_dir(&self.root_dir).unwrap() {
             match entry {
                 Ok(entry) => {
-                    filepaths.push(self.clean_file_path(entry.path().into_os_string().into_string().unwrap()));
                     let result = fs::metadata(entry.path());
                     match result {
                         Ok(metadata) => {
-                            if metadata.is_dir() && !metadata.file_type().is_symlink() {
-                                // each one of these could be a new thread ??
-                                let further = self.filepaths_in_directory(&entry.path().as_path());
-                                for item in further.iter() {
-                                    filepaths.push(self.clean_file_path(item.to_string()).clone());
+                            if metadata.is_file() {
+                                self.filepaths.push(entry.path().to_str().unwrap().to_string());
+                            } else if metadata.is_dir() && !metadata.file_type().is_symlink() {
+                                let local_thread_count = current_threads.clone();
+                                let mut done = false;
+                                while !done {
+                                    let mut current_thread_count: usize;
+                                    {
+                                    let locked_thread_count = local_thread_count.lock().unwrap();
+                                    current_thread_count = locked_thread_count.len();
+                                    }
+                                    let path = PathBuf::from(entry.path().to_str().unwrap().to_string());
+                                    if current_thread_count < 6 {
+                                        {
+                                            let mut locked_thread_count = local_thread_count.lock().unwrap();
+                                            locked_thread_count.push(true);
+                                        }
+                                        self.threads += 1;
+                                        let tx = self.tx.clone();
+                                        let spawn_thread_count = current_threads.clone();
+                                        thread::spawn(move||{
+                                            let mut scanner = DirectoryScanner::new(path);
+                                            scanner.scan(spawn_thread_count.clone());
+                                            tx.send(scanner);
+                                            let mut locked_thread_count = spawn_thread_count.lock().unwrap();
+                                            locked_thread_count.pop();   
+                                        });
+                                        done = true;
+                                    } else {
+                                        let mut scanner = DirectoryScanner::new(path);
+                                        scanner.scan(local_thread_count.clone());
+                                        self.filepaths.extend(scanner.filepaths);
+                                        done = true;
+                                    }
                                 }
-                            }
+                            } 
                         }
                         Err(_) => {}
                     }
@@ -63,16 +81,37 @@ impl FileFinder {
                 Err(_) => {}
             }
         }
-        filepaths
-    }
-
-    fn clean_file_path(&self, path: String) -> String {
-        let cleaned_path = path.replace(self.root_dir.to_str().unwrap(), "");
-        if cleaned_path.starts_with("/") {
-            cleaned_path[1..].to_string()
-        } else {
-            cleaned_path
+        for _ in 0..self.threads {
+            let scanner = self.rx.recv().unwrap();
+            self.filepaths.extend(scanner.filepaths);
         }
     }
 }
 
+pub struct FileFinder {
+    pub terminal: Arc<Terminal>,
+    result_set: ResultSet,
+}
+
+impl FileFinder {
+
+    pub fn new(terminal: Arc<Terminal>) -> Arc<Mutex<FileFinder>> {
+        Arc::new(Mutex::new(
+            FileFinder { 
+                terminal: terminal,
+                result_set: ResultSet::new(),
+            }
+        ))
+    }
+
+    pub fn start(&mut self, root_dir: &PathBuf) {
+        let mut scanner = DirectoryScanner::new(root_dir.clone());
+        scanner.scan(Arc::new(Mutex::new(vec![])));
+        self.result_set.add_many(scanner.filepaths, root_dir.to_str().unwrap());
+        self.terminal.show_results(self.result_set.to_vec());
+    }
+
+    pub fn apply_filter(&self, regex: Regex) {
+        self.terminal.show_results(self.result_set.apply_filter(regex));
+    }
+}
