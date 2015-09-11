@@ -95,10 +95,8 @@ impl Terminal {
         self.clear_results();
         let rustbox = self.rustbox.clone();
         let rustbox = rustbox.lock().unwrap();
-        let mut starting_row = 0;
-        for result in results.iter() {
-            starting_row = starting_row + 1;
-            rustbox.print(0, starting_row, rustbox::RB_NORMAL, Color::White, Color::Black, result);
+        for index in 0..rustbox.height() {
+            rustbox.print(0, index + 1, rustbox::RB_NORMAL, Color::White, Color::Black, &results[index]);
         }
         rustbox.present();
         let mut locked_results = self.results.lock().unwrap();
