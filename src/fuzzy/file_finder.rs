@@ -4,6 +4,7 @@ use regex::Regex;
 use std::path::PathBuf;
 use std::fs::{self, PathExt};
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use fuzzy::terminal::Terminal;
 use fuzzy::result_set::ResultSet;
 use std::thread;
@@ -31,7 +32,7 @@ impl DirectoryScanner {
         }
     }
 
-    pub fn scan(&mut self, current_threads: Arc<Mutex<Vec<bool>>>) {
+    pub fn scan(&mut self, current_threads: Arc<AtomicUsize>) {
         for entry in fs::read_dir(&self.root_dir).unwrap() {
             match entry {
                 Ok(entry) => {
@@ -41,20 +42,11 @@ impl DirectoryScanner {
                             if metadata.is_file() {
                                 self.filepaths.push(entry.path().to_str().unwrap().to_string());
                             } else if metadata.is_dir() && !metadata.file_type().is_symlink() {
-                                let local_thread_count = current_threads.clone();
                                 let mut done = false;
                                 while !done {
-                                    let mut current_thread_count: usize;
-                                    {
-                                    let locked_thread_count = local_thread_count.lock().unwrap();
-                                    current_thread_count = locked_thread_count.len();
-                                    }
                                     let path = PathBuf::from(entry.path().to_str().unwrap().to_string());
-                                    if current_thread_count < 6 {
-                                        {
-                                            let mut locked_thread_count = local_thread_count.lock().unwrap();
-                                            locked_thread_count.push(true);
-                                        }
+                                    if current_threads.load(Ordering::Relaxed) < 6 {
+                                        current_threads.fetch_add(1, Ordering::Relaxed);
                                         self.threads += 1;
                                         let tx = self.tx.clone();
                                         let spawn_thread_count = current_threads.clone();
@@ -62,13 +54,12 @@ impl DirectoryScanner {
                                             let mut scanner = DirectoryScanner::new(path);
                                             scanner.scan(spawn_thread_count.clone());
                                             tx.send(scanner);
-                                            let mut locked_thread_count = spawn_thread_count.lock().unwrap();
-                                            locked_thread_count.pop();   
+                                            spawn_thread_count.fetch_sub(1, Ordering::Relaxed);
                                         });
                                         done = true;
                                     } else {
                                         let mut scanner = DirectoryScanner::new(path);
-                                        scanner.scan(local_thread_count.clone());
+                                        scanner.scan(current_threads.clone());
                                         self.filepaths.extend(scanner.filepaths);
                                         done = true;
                                     }
@@ -106,7 +97,7 @@ impl FileFinder {
 
     pub fn start(&mut self, root_dir: &PathBuf) {
         let mut scanner = DirectoryScanner::new(root_dir.clone());
-        scanner.scan(Arc::new(Mutex::new(vec![])));
+        scanner.scan(Arc::new(AtomicUsize::new(0)));
         self.result_set.add_many(scanner.filepaths, root_dir.to_str().unwrap());
         self.terminal.show_results(self.result_set.to_vec());
     }
