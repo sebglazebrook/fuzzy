@@ -24,7 +24,7 @@ impl Terminal {
         Arc::new(Terminal {rustbox: rustbox, results: Mutex::new(vec![]), hightlighted_result_row: AtomicUsize::new(0) } )
     }
 
-    pub fn on_stdin<'a>(&self, search_phrase: Arc<Mutex<SearchPhrase>>) {
+    pub fn on_stdin(&self, search_phrase: Arc<Mutex<SearchPhrase>>) {
         let mut character_index = 0;
         let mut done = false;
         while !done {
