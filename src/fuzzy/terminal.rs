@@ -4,13 +4,14 @@ extern crate time;
 use rustbox::{RustBox, Key, Color};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use fuzzy::search_phrase::SearchPhrase;
 use std::thread;
 
 pub struct Terminal {
     pub rustbox: Arc<Mutex<RustBox>>,
     results: Mutex<Vec<String>>,
-    hightlighted_result_row: Mutex<Vec<usize>>,
+    hightlighted_result_row: AtomicUsize,
 }
 
 impl Terminal {
@@ -20,7 +21,7 @@ impl Terminal {
             Result::Ok(v) => Arc::new(Mutex::new(v)),
             Result::Err(e) => panic!("{}", e),
         };
-        Arc::new(Terminal {rustbox: rustbox, results: Mutex::new(vec![]), hightlighted_result_row: Mutex::new(vec![0]) } )
+        Arc::new(Terminal {rustbox: rustbox, results: Mutex::new(vec![]), hightlighted_result_row: AtomicUsize::new(0) } )
     }
 
     pub fn on_stdin<'a>(&self, search_phrase: Arc<Mutex<SearchPhrase>>) {
@@ -119,41 +120,39 @@ impl Terminal {
     }
 
     fn hightlight_next_row(&self, rustbox: &RustBox) {
-        let mut hightlighted_result_row = self.hightlighted_result_row.lock().unwrap();
         let results = self.results.lock().unwrap();
         // unhighlight the current row
-        if hightlighted_result_row[0] > 0 {
-            rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::White, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
+        if self.hightlighted_result_row.load(Ordering::Relaxed) > 0 {
+            rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::White, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
         }
         // highlight next row
-        hightlighted_result_row[0] = hightlighted_result_row[0] + 1;
-        rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
+        self.hightlighted_result_row.fetch_add(1, Ordering::Relaxed);
+        rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
         rustbox.present();
     }
 
     fn hightlight_previous_row(&self, rustbox: &RustBox) {
-        let mut hightlighted_result_row = self.hightlighted_result_row.lock().unwrap();
         let results = self.results.lock().unwrap();
         // unhighlight the current row
-        if hightlighted_result_row[0] > 0 {
-            rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::White, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
-            if hightlighted_result_row[0] > 1 {
+        if self.hightlighted_result_row.load(Ordering::Relaxed) > 0 {
+            rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::White, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
+            if self.hightlighted_result_row.load(Ordering::Relaxed) > 1 {
                 // hightlight the previous row
-                hightlighted_result_row[0] = hightlighted_result_row[0] - 1;
-                rustbox.print(0, hightlighted_result_row[0], rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(hightlighted_result_row[0] - 1)]);
+                self.hightlighted_result_row.fetch_sub(1, Ordering::Relaxed);
+                rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
             } else {
-                hightlighted_result_row[0]  = 0
+                self.hightlighted_result_row.store(0, Ordering::Relaxed)
             }
             rustbox.present();
         }
     }
 
     pub fn has_highlighted_result(&self) -> bool {
-        self.hightlighted_result_row.lock().unwrap()[0] > 0
+        self.hightlighted_result_row.load(Ordering::Relaxed) > 0
     }
 
     pub fn get_highlighted_result(&self) -> String {
-        let index = self.hightlighted_result_row.lock().unwrap()[0];
+        let index = self.hightlighted_result_row.load(Ordering::Relaxed);
         index.to_string();
         self.results.lock().unwrap()[index - 1].clone()
     }
