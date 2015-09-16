@@ -3,7 +3,7 @@ name = "fuzzy"
 version = "0.1.0"
 dependencies = [
  "regex 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustbox 0.6.3 (git+http://github.com/sebglazebrook/rustbox.git)",
+ "rustbox 0.7.1 (git+http://github.com/sebglazebrook/rustbox.git)",
  "time 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -85,14 +85,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustbox"
-version = "0.6.3"
-source = "git+http://github.com/sebglazebrook/rustbox.git#fbde0ac9ffa537d470777c5ae7951ec9d40e676d"
+version = "0.7.1"
+source = "git+http://github.com/sebglazebrook/rustbox.git#48353b5d59ae47ef618c9385f4c41326585cf8c9"
 dependencies = [
  "bitflags 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gag 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "termbox-sys 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termbox-sys 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -114,11 +114,8 @@ dependencies = [
 
 [[package]]
 name = "termbox-sys"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "time"
