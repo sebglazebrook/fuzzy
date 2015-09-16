@@ -36,40 +36,35 @@ impl DirectoryScanner {
         for entry in fs::read_dir(&self.root_dir).unwrap() {
             match entry {
                 Ok(entry) => {
-                    let result = fs::metadata(entry.path());
-                    match result {
-                        Ok(metadata) => {
-                            if metadata.is_file() {
-                                self.filepaths.push(entry.path().to_str().unwrap().to_string());
-                            } else if metadata.is_dir() && !metadata.file_type().is_symlink() {
-                                let mut done = false;
-                                while !done {
-                                    let path = PathBuf::from(entry.path().to_str().unwrap().to_string());
-                                    if current_threads.load(Ordering::Relaxed) < 6 {
-                                        current_threads.fetch_add(1, Ordering::Relaxed);
-                                        self.threads += 1;
-                                        let tx = self.tx.clone();
-                                        let spawn_thread_count = current_threads.clone();
-                                        thread::spawn(move||{
-                                            let mut scanner = DirectoryScanner::new(path);
-                                            scanner.scan(spawn_thread_count.clone());
-                                            tx.send(scanner);
-                                            spawn_thread_count.fetch_sub(1, Ordering::Relaxed);
-                                        });
-                                        done = true;
-                                    } else {
-                                        let mut scanner = DirectoryScanner::new(path);
-                                        scanner.scan(current_threads.clone());
-                                        self.filepaths.extend(scanner.filepaths);
-                                        done = true;
-                                    }
-                                }
-                            } 
+                    let filetype = entry.file_type().unwrap();
+                    if filetype.is_file() {
+                        self.filepaths.push(entry.path().to_str().unwrap().to_string());
+                    } else if filetype.is_dir() && !filetype.is_symlink() {
+                        let mut done = false;
+                        while !done {
+                            let path = PathBuf::from(entry.path().to_str().unwrap().to_string());
+                            if current_threads.load(Ordering::Relaxed) < 6 {
+                                current_threads.fetch_add(1, Ordering::Relaxed);
+                                self.threads += 1;
+                                let tx = self.tx.clone();
+                                let spawn_thread_count = current_threads.clone();
+                                thread::spawn(move||{
+                                    let mut scanner = DirectoryScanner::new(path);
+                                    scanner.scan(spawn_thread_count.clone());
+                                    tx.send(scanner);
+                                    spawn_thread_count.fetch_sub(1, Ordering::Relaxed);
+                                });
+                                done = true;
+                            } else {
+                                let mut scanner = DirectoryScanner::new(path);
+                                scanner.scan(current_threads.clone());
+                                self.filepaths.extend(scanner.filepaths);
+                                done = true;
+                            }
                         }
-                        Err(_) => {}
                     }
                 }
-                Err(_) => {}
+                Err(_) => { }
             }
         }
         for _ in 0..self.threads {
