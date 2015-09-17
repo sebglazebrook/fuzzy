@@ -95,7 +95,13 @@ impl Terminal {
         self.clear_results();
         let rustbox = self.rustbox.clone();
         let rustbox = rustbox.lock().unwrap();
-        for index in 0..rustbox.height() {
+        let max_displayed_results;
+        if results.len() > rustbox.height() {
+            max_displayed_results = rustbox.height();
+        } else {
+            max_displayed_results = results.len();
+        }
+        for index in 0..max_displayed_results {
             rustbox.print(0, index + 1, rustbox::RB_NORMAL, Color::White, Color::Black, &results[index]);
         }
         rustbox.present();
