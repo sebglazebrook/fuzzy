@@ -51,8 +51,11 @@ impl FileFinder {
         let rx = self.rx.clone();
         thread::spawn(move|| {
             loop {
-                let mut event_service = event_service.lock().unwrap();
-                let events = event_service.fetch_all_search_query_change_events();
+                let events;
+                {
+                    let mut event_service = event_service.lock().unwrap();
+                    events = event_service.fetch_all_search_query_change_events();
+                }
                 if events.len() > 0 {
                     let last_event = events.last().unwrap();
                     let locked_result_set = result_set.lock().unwrap();
