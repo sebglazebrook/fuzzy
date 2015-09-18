@@ -10,10 +10,6 @@ impl ResultSet {
         ResultSet { results: vec![]}
     }
 
-    pub fn add(&mut self, result: String) {
-        self.results.push(result);
-    }
-
     pub fn add_many(&mut self, results: Vec<String>, root_dir: &str) {
         let mut new = vec![];
         for result in results {

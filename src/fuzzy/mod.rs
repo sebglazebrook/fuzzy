@@ -3,3 +3,4 @@ pub mod terminal;
 pub mod file_finder;
 pub mod result_set;
 pub mod event_service;
+pub mod directory_scanner;
