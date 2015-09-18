@@ -36,3 +36,10 @@ impl ResultSet {
         matched_results
     }
 }
+
+impl Clone for ResultSet {
+    
+    fn clone(&self) -> ResultSet {
+        ResultSet { results: self.to_vec() }
+    }
+}

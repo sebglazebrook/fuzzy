@@ -10,11 +10,13 @@ mod fuzzy;
 use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;
+use fuzzy::event_service::EventService;
 
 struct App {
     threads: u8,
     terminal: Arc<Terminal>,
     file_finder: Arc<Mutex<FileFinder>>,
+    event_service: Arc<Mutex<EventService>>,
     rx: std::sync::mpsc::Receiver<usize>,
     tx: std::sync::mpsc::Sender<usize>,
 }
@@ -24,11 +26,13 @@ impl App {
     pub fn new() -> App {
         let (tx, rx) = channel();
         let terminal = Terminal::new();
-        let file_finder = FileFinder::new(terminal.clone());
+        let event_service = Arc::new(Mutex::new(EventService::new()));
+        let file_finder = FileFinder::new(terminal.clone(), event_service.clone());
         App { 
             threads: 0,
             terminal: terminal,
             file_finder: file_finder,
+            event_service: event_service,
             rx: rx,
             tx: tx,
         }
@@ -55,7 +59,7 @@ impl App {
     }
 
     fn capture_user_input(&mut self) {
-        let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(self.file_finder.clone())));
+        let search_phrase = Arc::new(Mutex::new(SearchPhrase::init(self.event_service.clone())));
         let tx = self.tx.clone();
         let local_search_phrase = search_phrase.clone();
         let local_terminal = self.terminal.clone();
@@ -85,4 +89,5 @@ impl App {
 pub fn initialize() {
     let found_file = App::new().start();
     println!("{}", found_file);
+    std::process::exit(0);
 }

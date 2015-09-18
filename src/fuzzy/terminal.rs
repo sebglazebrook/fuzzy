@@ -40,11 +40,11 @@ impl Terminal {
                                 rustbox.present();
                                 character_index = character_index + 1;
 
-                                // have to do this as a new thread
+                                // have to do this as a new thread but don't want to 
                                 let local_search_phrase = search_phrase.clone();
                                 thread::spawn(move || {
                                     let mut local_search_phrase = local_search_phrase.lock().unwrap();
-                                    local_search_phrase.update(c.to_string());
+                                    local_search_phrase.update(c.to_string()); 
                                 });
                             }
                             Some(Key::Backspace) => {
@@ -87,7 +87,6 @@ impl Terminal {
                     _ => {  }
                 }
             }
-            thread::sleep_ms(1);
         }
     }
 
@@ -115,7 +114,7 @@ impl Terminal {
         let rustbox = rustbox.lock().unwrap();
         // clear all result rows
         let mut empty_line = String::new(); // TODO there must be a better way of doing this in rust
-        for _ in 1..rustbox.width() {
+        for _ in 1..(rustbox.width() + 1) {
             empty_line = empty_line.clone() + " ";
         }
         for row in 1..rustbox.height() {

@@ -3,33 +3,36 @@ extern crate regex;
 use regex::Regex;
 use std::sync::{Arc, Mutex};
 use fuzzy::file_finder::FileFinder;
+use fuzzy::event_service::EventService;
 
 pub struct SearchPhrase {
     pub content: String,
-    file_finder: Arc<Mutex<FileFinder>>,
+    event_service: Arc<Mutex<EventService>>
 }
 
 impl SearchPhrase {
 
-    pub fn init(file_finder: Arc<Mutex<FileFinder>>) -> SearchPhrase {
+    pub fn init(event_service: Arc<Mutex<EventService>>) -> SearchPhrase {
         SearchPhrase { 
             content: String::new(),
-            file_finder: file_finder,
+            event_service: event_service
         }
+    }
+
+    pub fn from_string(string: String, event_service: Arc<Mutex<EventService>>) -> SearchPhrase {
+        SearchPhrase { content: string, event_service: event_service }
     }
 
     pub fn update(&mut self, string: String)  {
         self.content = self.content.clone() + &string[..];
-        let file_finder = self.file_finder.lock().unwrap();
-        file_finder.apply_filter(self.to_regex());
+        self.event_service.lock().unwrap().trigger_search_phrase_changed(self.clone());
     }
 
     pub fn delete_last(&mut self)  {
         let mut new_string = self.content.clone();
         new_string.pop();
         self.content = new_string;
-        let file_finder = self.file_finder.lock().unwrap();
-        file_finder.apply_filter(self.to_regex());
+        self.event_service.lock().unwrap().trigger_search_phrase_changed(self.clone());
     }
 
     pub fn to_regex(&self) -> Regex {
@@ -39,6 +42,13 @@ impl SearchPhrase {
             regex_phrase.push(character);
         }
         Regex::new(&regex_phrase).unwrap()
+    }
+}
+
+impl Clone for SearchPhrase {
+
+    fn clone(&self) -> Self {
+        SearchPhrase::from_string(self.content.clone(), self.event_service.clone())
     }
 }
 
