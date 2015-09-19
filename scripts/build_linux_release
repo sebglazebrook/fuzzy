@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+APP_DIR="/Users/sebastianglazebrook/code/rust/fuzzy"
+REVISION="1"
+NAME="fuzzy-binary-builder-$REVISION"
+RELEASES_DIR="$APP_DIR/releases/$REVISION"
+LINUX_BINARY_BUILDER_DOCKERFILE="$APP_DIR/dockerfiles/linux-binary-builder.Dockerfile"
+
+echo " >> Building image"
+cd "$APP_DIR/dockerfiles/"
+docker build --tag fuzzy-binary-builder --file $LINUX_BINARY_BUILDER_DOCKERFILE .
+echo " >> Create binary in container"
+cd "$APP_DIR"
+docker rm $NAME
+docker create --name $NAME -v $APP_DIR:/code fuzzy-binary-builder cargo build --release
+echo " >> Exporting binary to host"
+mkdir -p $RELEASES_DIR
+docker cp $NAME:/code/target/release/fuzzy $RELEASES_DIR/fuzzy_linux
+echo " >> Cleaning up"
+docker rm $NAME
+echo " >> New release binary created for $REVISION in directory $RELEASES_DIR"
