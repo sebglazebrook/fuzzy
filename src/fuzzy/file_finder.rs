@@ -77,7 +77,7 @@ impl FileFinder {
 impl Drop for FileFinder {
 
     fn drop(&mut self) {
-        let _ = self.tx.send(1);
-        thread::sleep_ms(1);
+        self.tx.send(1).unwrap();
+        thread::sleep_ms(1); // waiting for the nested thread in FileFinder to be killed.
     }
 }
