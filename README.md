@@ -13,7 +13,15 @@ I have been using [FZF](https://github.com/junegunn/fzf) and that's where I got 
 
 Install the latest release for max here: https://github.com/sebglazebrook/fuzzy/releases
 
-Then chuck it in your path and remove the osx suffix on the filename.
+Then chuck it in your path and remove the "_osx" suffix on the filename.
+
+### Linux
+
+Install the latest release for max here: https://github.com/sebglazebrook/fuzzy/releases
+
+Then chuck it in your path and remove the "_linux" suffix on the filename.
+
+The binary has been tested on debian jessie.
 
 ## Usage
 
