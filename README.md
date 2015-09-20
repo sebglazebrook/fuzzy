@@ -30,3 +30,5 @@ Just type `fuzzy` and press enter.
 You'll start to see a list of all files and directories recursivley from your current directory.
 
 Now just start typing to filter the results and find what you need.
+
+When you find what you want press `enter` to exit or `ctrl + y` to copy the result to your clipboard.
