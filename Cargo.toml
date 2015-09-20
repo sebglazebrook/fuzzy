@@ -4,7 +4,8 @@ version = "0.2.0"
 authors = ["Seb Glazebrook <sebastian.glazebrook@redbubble.com>"]
 
 [lib]
-name = "fuzz"
+name = "fuzzy"
+path = "src/lib.rs"
 
 [dependencies]
 regex = "0.1.8"

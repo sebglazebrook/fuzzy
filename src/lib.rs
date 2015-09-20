@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::*;
 
 mod fuzzy;
+
 use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;

@@ -1,5 +1,6 @@
-extern crate fuzz;
-use fuzz::initialize;
+extern crate fuzzy;
+
+use fuzzy::initialize;
 
 fn main() {
     initialize();
