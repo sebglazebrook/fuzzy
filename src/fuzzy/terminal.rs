@@ -1,7 +1,9 @@
 extern crate rustbox;
 extern crate time;
+extern crate clipboard;
 
 use rustbox::{RustBox, Key, Color};
+use self::clipboard::ClipboardContext;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -72,6 +74,11 @@ impl Terminal {
                             }
                             Some(Key::Ctrl('k')) => {
                                 self.hightlight_previous_row(&rustbox);
+                            }
+                            Some(Key::Ctrl('y')) => {
+                                let mut ctx = ClipboardContext::new().unwrap();
+                                ctx.set_contents(self.get_highlighted_result());
+                                done = true;
                             }
                             Some(Key::Down) => {
                                 self.hightlight_next_row(&rustbox);
