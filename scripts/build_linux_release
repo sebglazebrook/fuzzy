@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
+if [ "$1" == "" ];then
+  printf "Invalid Arguments! Missing version number\n  Example usage: './build_linux_release 0.1.0'\n"
+  exit 1
+fi
+
+REVISION="$1"
 APP_DIR="/Users/sebastianglazebrook/code/rust/fuzzy"
-REVISION="1"
 NAME="fuzzy-binary-builder-$REVISION"
 RELEASES_DIR="$APP_DIR/releases/$REVISION"
 LINUX_BINARY_BUILDER_DOCKERFILE="$APP_DIR/dockerfiles/linux-binary-builder.Dockerfile"
