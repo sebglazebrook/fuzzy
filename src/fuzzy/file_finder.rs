@@ -2,7 +2,7 @@ extern crate regex;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+use std::sync::atomic::AtomicUsize;
 use fuzzy::terminal::Terminal;
 use fuzzy::result_set::ResultSet;
 use fuzzy::event_service::EventService;
@@ -45,7 +45,6 @@ impl FileFinder {
         self.check_for_filters();
         let (tx, rx) = mpsc::channel();
         let mut scanner = DirectoryScanner::new(root_dir.clone(), Arc::new(Mutex::new(tx)));
-        let done = Arc::new(AtomicBool::new(false));
         thread::spawn(move || {
             scanner.scan(Arc::new(AtomicUsize::new(0)));
         });
@@ -54,14 +53,13 @@ impl FileFinder {
             let mut result_set = self.result_set.lock().unwrap();
             result_set.add_many(results, root_dir.to_str().unwrap());
             for subscriber in self.subscriber_channels.iter() {
-                subscriber.lock().unwrap().send(result_set.to_vec());
+                let _ = subscriber.lock().unwrap().send(result_set.to_vec());
             }
         }
     }
 
     fn check_for_filters(&self) {
         let event_service = self.event_service.clone();
-        let terminal = self.terminal.clone();
         let result_set = self.result_set.clone();
         let rx = self.rx.clone();
         let subscriber_channels = self.subscriber_channels.clone();
@@ -77,7 +75,7 @@ impl FileFinder {
                     let locked_result_set = result_set.lock().unwrap();
                     let filtered_results = locked_result_set.apply_filter(last_event.to_regex());
                     for subscriber in subscriber_channels.iter() {
-                        subscriber.lock().unwrap().send(filtered_results.clone());
+                        let _ = subscriber.lock().unwrap().send(filtered_results.clone());
                     }
                 }
                 let locked_rx = rx.lock().unwrap();

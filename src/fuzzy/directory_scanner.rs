@@ -50,7 +50,6 @@ impl DirectoryScanner {
                                         let subscriber = self.subscriber.clone();
                                         let second_subscriber = self.subscriber.clone();
                                         thread::spawn(move||{
-                                            let second_path = path.clone();
                                             let mut scanner = DirectoryScanner::new(path, subscriber);
                                             scanner.scan(spawn_thread_count.clone());
                                             let _ = second_subscriber.lock().unwrap().send(scanner.filepaths.clone());
@@ -61,7 +60,6 @@ impl DirectoryScanner {
                                     } else {
                                         let subscriber = self.subscriber.clone();
                                         let second_subscriber = self.subscriber.clone();
-                                        let second_path = path.clone();
                                         let mut scanner = DirectoryScanner::new(path, subscriber);
                                         scanner.scan(current_threads.clone());
                                         self.filepaths.extend(scanner.filepaths);
@@ -74,10 +72,15 @@ impl DirectoryScanner {
                         Err(_) => { }
                     }
                 }
-
             }
             Err(_) => { }
         }
+        self.wait_for_all_threads_to_finish();
+    }
+
+    //---------- private methods ------------//
+
+    fn wait_for_all_threads_to_finish(&mut self) {
         for _ in 0..self.threads {
             let scanner = self.rx.recv().unwrap();
             self.filepaths.extend(scanner.filepaths);

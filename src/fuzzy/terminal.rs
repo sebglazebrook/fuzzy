@@ -47,7 +47,7 @@ impl Terminal {
         thread::spawn(move || {
             let locked_rx = rx.lock().unwrap();
             for results in locked_rx.iter() {
-                stx.send(results);
+                let _ = stx.send(results);
             }
         });
 
@@ -111,7 +111,7 @@ impl Terminal {
                             }
                             Some(Key::Ctrl('y')) => {
                                 let mut ctx = ClipboardContext::new().unwrap();
-                                ctx.set_contents(self.get_highlighted_result());
+                                let _ = ctx.set_contents(self.get_highlighted_result());
                                 done = true;
                             }
                             Some(Key::Down) => {
