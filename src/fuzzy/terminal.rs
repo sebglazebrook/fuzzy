@@ -46,17 +46,12 @@ impl Terminal {
         let (stx, srx) = mpsc::channel();
         thread::spawn(move || {
             let locked_rx = rx.lock().unwrap();
-            loop { // need to break out of this
-                match locked_rx.try_recv() {
-                    Ok(results) => { stx.send(results); }
-                    Err(TryRecvError::Disconnected) => { break; }
-                    Err(TryRecvError::Empty) => {}
-                }
-                thread::sleep_ms(1);
+            for results in locked_rx.iter() {
+                stx.send(results);
             }
         });
 
-        while! self.search_complete.load(Ordering::Relaxed) {
+        while !self.search_complete.load(Ordering::Relaxed) {
             match srx.try_recv() {
                 Ok(results) => { self.show_results(results); }
                 Err(TryRecvError::Disconnected) => { break; }
