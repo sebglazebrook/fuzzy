@@ -30,12 +30,13 @@ impl DirectoryScanner {
     pub fn scan(&mut self, current_threads: Arc<AtomicUsize>) {
         match fs::read_dir(&self.root_dir) {
             Ok(read_dir) => {
+                let mut filepaths = vec![];
                 for entry in read_dir {
                     match entry {
                         Ok(entry) => {
                             let filetype = entry.file_type().unwrap();
                             if filetype.is_file() {
-                                let _ = self.subscriber.lock().unwrap().send(vec![entry.path().to_str().unwrap().to_string()]);
+                                filepaths.push(entry.path().to_str().unwrap().to_string());
                             } else if filetype.is_dir() && !filetype.is_symlink() {
                                 let path = PathBuf::from(entry.path().to_str().unwrap().to_string());
                                 if self.concurrency_limit_reached(&current_threads) {
@@ -48,6 +49,7 @@ impl DirectoryScanner {
                         Err(_) => { }
                     }
                 }
+                let _ = self.subscriber.lock().unwrap().send(filepaths);
             }
             Err(_) => { }
         }
