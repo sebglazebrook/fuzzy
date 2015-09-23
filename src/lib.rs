@@ -29,6 +29,7 @@ impl App {
         let terminal = Terminal::new();
         let event_service = Arc::new(Mutex::new(EventService::new()));
         let file_finder = FileFinder::new(terminal.clone(), event_service.clone());
+        file_finder.lock().unwrap().add_subscriber_channel(terminal.tx.clone());
         App { 
             threads: 0,
             terminal: terminal,
@@ -42,11 +43,16 @@ impl App {
     pub fn start(&mut self) -> String {
         self.find_files();
         self.capture_user_input();
+        self.prepare_terminal();
         self.wait_until_exit();
         self.get_found_file()
     }
 
     // --------- private methods ----------- //
+
+    fn prepare_terminal(&self) {
+        self.terminal.listen_for_files();
+    }
 
     fn find_files(&mut self) {
         let file_finder = self.file_finder.clone();

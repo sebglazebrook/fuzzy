@@ -6,14 +6,19 @@ use rustbox::{RustBox, Key, Color};
 use self::clipboard::ClipboardContext;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering, AtomicBool};
 use fuzzy::search_phrase::SearchPhrase;
 use std::thread;
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc;
 
 pub struct Terminal {
     pub rustbox: Arc<Mutex<RustBox>>,
     results: Mutex<Vec<String>>,
     hightlighted_result_row: AtomicUsize,
+    rx: Arc<Mutex<Receiver<Vec<String>>>>,
+    pub tx: Arc<Mutex<Sender<Vec<String>>>>,
+    search_complete: AtomicBool
 }
 
 impl Terminal {
@@ -23,7 +28,41 @@ impl Terminal {
             Result::Ok(v) => Arc::new(Mutex::new(v)),
             Result::Err(e) => panic!("{}", e),
         };
-        Arc::new(Terminal {rustbox: rustbox, results: Mutex::new(vec![]), hightlighted_result_row: AtomicUsize::new(0) } )
+        let (tx, rx) = mpsc::channel();
+        Arc::new(
+            Terminal{
+                rustbox: rustbox,
+                results: Mutex::new(vec![]),
+                hightlighted_result_row: AtomicUsize::new(0),
+                tx: Arc::new(Mutex::new(tx)),
+                rx: Arc::new(Mutex::new(rx)),
+                search_complete: AtomicBool::new(false)
+            }
+        )
+    }
+
+    pub fn listen_for_files(&self) {
+        let rx = self.rx.clone();
+        let (stx, srx) = mpsc::channel();
+        thread::spawn(move || {
+            let locked_rx = rx.lock().unwrap();
+            loop { // need to break out of this
+                match locked_rx.try_recv() {
+                    Ok(results) => { stx.send(results); }
+                    Err(TryRecvError::Disconnected) => { break; }
+                    Err(TryRecvError::Empty) => {}
+                }
+                thread::sleep_ms(1);
+            }
+        });
+
+        while! self.search_complete.load(Ordering::Relaxed) {
+            match srx.try_recv() {
+                Ok(results) => { self.show_results(results); }
+                Err(TryRecvError::Disconnected) => { break; }
+                Err(TryRecvError::Empty) => {}
+            }
+        }
     }
 
     pub fn on_stdin(&self, search_phrase: Arc<Mutex<SearchPhrase>>) {
@@ -95,6 +134,7 @@ impl Terminal {
                 }
             }
         }
+        self.search_complete.store(true, Ordering::Relaxed);
     }
 
     pub fn show_results(&self, results: Vec<String>) {

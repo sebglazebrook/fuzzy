@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::fs::{self, PathExt};
 use std::thread;
@@ -12,11 +12,12 @@ pub struct DirectoryScanner {
     threads: usize,
     rx: Receiver<DirectoryScanner>,
     tx: Sender<DirectoryScanner>,
+    subscriber_channels: Vec<Arc<Mutex<Sender<Vec<String>>>>>,
 }
 
 impl DirectoryScanner {
 
-    pub fn new(root_dir: PathBuf) -> DirectoryScanner {
+    pub fn new(root_dir: PathBuf, subscriber_channels: Vec<Arc<Mutex<Sender<Vec<String>>>>>) -> DirectoryScanner {
         let (tx, rx) = mpsc::channel();
         DirectoryScanner{
             root_dir: root_dir,
@@ -24,6 +25,7 @@ impl DirectoryScanner {
             threads: 0,
             rx: rx,
             tx: tx,
+            subscriber_channels: subscriber_channels
         }
     }
 
@@ -45,15 +47,17 @@ impl DirectoryScanner {
                                         self.threads += 1;
                                         let tx = self.tx.clone();
                                         let spawn_thread_count = current_threads.clone();
+                                        let subscriber_channels = self.subscriber_channels.clone();
                                         thread::spawn(move||{
-                                            let mut scanner = DirectoryScanner::new(path);
+                                            let mut scanner = DirectoryScanner::new(path, subscriber_channels);
                                             scanner.scan(spawn_thread_count.clone());
                                             let _ = tx.send(scanner);
                                             spawn_thread_count.fetch_sub(1, Ordering::Relaxed);
                                         });
                                         done = true;
                                     } else {
-                                        let mut scanner = DirectoryScanner::new(path);
+                                        let subscriber_channels = self.subscriber_channels.clone();
+                                        let mut scanner = DirectoryScanner::new(path, subscriber_channels);
                                         scanner.scan(current_threads.clone());
                                         self.filepaths.extend(scanner.filepaths);
                                         done = true;
