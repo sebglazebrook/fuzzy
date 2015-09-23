@@ -16,6 +16,8 @@ impl ResultSet {
             new.push(result.replace(root_dir, "")[1..].to_string());
         }
         self.results.extend(new);
+        self.sort_results();
+        self.results.dedup();
     }
 
     pub fn to_vec(&self) -> Vec<String> {
@@ -30,6 +32,12 @@ impl ResultSet {
             }
         }
         matched_results
+    }
+
+    //-------- private methods -------------//
+
+    fn sort_results(&mut self) {
+        self.results.sort();
     }
 }
 

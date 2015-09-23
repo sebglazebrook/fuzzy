@@ -12,12 +12,12 @@ pub struct DirectoryScanner {
     threads: usize,
     rx: Receiver<DirectoryScanner>,
     tx: Sender<DirectoryScanner>,
-    subscriber_channels: Vec<Arc<Mutex<Sender<Vec<String>>>>>,
+    subscriber: Arc<Mutex<Sender<Vec<String>>>>,
 }
 
 impl DirectoryScanner {
 
-    pub fn new(root_dir: PathBuf, subscriber_channels: Vec<Arc<Mutex<Sender<Vec<String>>>>>) -> DirectoryScanner {
+    pub fn new(root_dir: PathBuf, subscriber: Arc<Mutex<Sender<Vec<String>>>>) -> DirectoryScanner {
         let (tx, rx) = mpsc::channel();
         DirectoryScanner{
             root_dir: root_dir,
@@ -25,7 +25,7 @@ impl DirectoryScanner {
             threads: 0,
             rx: rx,
             tx: tx,
-            subscriber_channels: subscriber_channels
+            subscriber: subscriber
         }
     }
 
@@ -47,19 +47,25 @@ impl DirectoryScanner {
                                         self.threads += 1;
                                         let tx = self.tx.clone();
                                         let spawn_thread_count = current_threads.clone();
-                                        let subscriber_channels = self.subscriber_channels.clone();
+                                        let subscriber = self.subscriber.clone();
+                                        let second_subscriber = self.subscriber.clone();
                                         thread::spawn(move||{
-                                            let mut scanner = DirectoryScanner::new(path, subscriber_channels);
+                                            let second_path = path.clone();
+                                            let mut scanner = DirectoryScanner::new(path, subscriber);
                                             scanner.scan(spawn_thread_count.clone());
+                                            let _ = second_subscriber.lock().unwrap().send(scanner.filepaths.clone());
                                             let _ = tx.send(scanner);
                                             spawn_thread_count.fetch_sub(1, Ordering::Relaxed);
                                         });
                                         done = true;
                                     } else {
-                                        let subscriber_channels = self.subscriber_channels.clone();
-                                        let mut scanner = DirectoryScanner::new(path, subscriber_channels);
+                                        let subscriber = self.subscriber.clone();
+                                        let second_subscriber = self.subscriber.clone();
+                                        let second_path = path.clone();
+                                        let mut scanner = DirectoryScanner::new(path, subscriber);
                                         scanner.scan(current_threads.clone());
                                         self.filepaths.extend(scanner.filepaths);
+                                        let _ = second_subscriber.lock().unwrap().send(self.filepaths.clone());
                                         done = true;
                                     }
                                 }

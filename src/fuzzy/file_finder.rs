@@ -2,7 +2,7 @@ extern crate regex;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use fuzzy::terminal::Terminal;
 use fuzzy::result_set::ResultSet;
 use fuzzy::event_service::EventService;
@@ -43,16 +43,19 @@ impl FileFinder {
 
     pub fn start(&mut self, root_dir: &PathBuf) {
         self.check_for_filters();
-        //self.start_receiver_loop();
-        
-        // send through a tx for the scanner and directory scanner sends all the dir it find and
-        // scanner adds them to the result set and updates any subscriber channels
-        let mut scanner = DirectoryScanner::new(root_dir.clone(), self.subscriber_channels.clone());
-        scanner.scan(Arc::new(AtomicUsize::new(0)));
-        let mut result_set = self.result_set.lock().unwrap();
-        result_set.add_many(scanner.filepaths, root_dir.to_str().unwrap());
-        for subscriber in self.subscriber_channels.iter() {
-            subscriber.lock().unwrap().send(result_set.to_vec());
+        let (tx, rx) = mpsc::channel();
+        let mut scanner = DirectoryScanner::new(root_dir.clone(), Arc::new(Mutex::new(tx)));
+        let done = Arc::new(AtomicBool::new(false));
+        thread::spawn(move || {
+            scanner.scan(Arc::new(AtomicUsize::new(0)));
+        });
+
+        for results in rx.iter() {
+            let mut result_set = self.result_set.lock().unwrap();
+            result_set.add_many(results, root_dir.to_str().unwrap());
+            for subscriber in self.subscriber_channels.iter() {
+                subscriber.lock().unwrap().send(result_set.to_vec());
+            }
         }
     }
 
