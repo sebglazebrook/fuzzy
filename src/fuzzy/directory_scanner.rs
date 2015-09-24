@@ -1,6 +1,5 @@
 use std::path::PathBuf;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::mpsc;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::fs::{self, PathExt};
@@ -9,20 +8,15 @@ use std::thread;
 pub struct DirectoryScanner {
     root_dir: PathBuf,
     threads: usize,
-    rx: Receiver<DirectoryScanner>,
-    tx: Sender<DirectoryScanner>,
     subscriber: Arc<Mutex<Sender<Vec<String>>>>,
 }
 
 impl DirectoryScanner {
 
     pub fn new(root_dir: PathBuf, subscriber: Arc<Mutex<Sender<Vec<String>>>>) -> DirectoryScanner {
-        let (tx, rx) = mpsc::channel();
         DirectoryScanner{
             root_dir: root_dir,
             threads: 0,
-            rx: rx,
-            tx: tx,
             subscriber: subscriber
         }
     }
@@ -53,7 +47,6 @@ impl DirectoryScanner {
             }
             Err(_) => { }
         }
-        self.wait_for_all_threads_to_finish();
     }
 
     //---------- private methods ------------//
@@ -71,21 +64,13 @@ impl DirectoryScanner {
     fn scan_directory_within_thread(&mut self, path: PathBuf, thread_count: Arc<AtomicUsize>) {
         thread_count.fetch_add(1, Ordering::Relaxed);
         self.threads += 1;
-        let tx = self.tx.clone();
         let spawn_thread_count = thread_count.clone();
         let subscriber = self.subscriber.clone();
         thread::spawn(move||{
             let mut scanner = DirectoryScanner::new(path, subscriber);
             scanner.scan(spawn_thread_count.clone());
-            let _ = tx.send(scanner);
             spawn_thread_count.fetch_sub(1, Ordering::Relaxed);
         });
-    }
-
-    fn wait_for_all_threads_to_finish(&mut self) {
-        for _ in 0..self.threads {
-            let _ = self.rx.recv().unwrap();
-        }
     }
 }
 
