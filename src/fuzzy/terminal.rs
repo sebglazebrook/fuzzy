@@ -8,54 +8,52 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering, AtomicBool};
 use fuzzy::search_phrase::SearchPhrase;
+use fuzzy::event_service::EventService;
 use std::thread;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Sender};
 use std::sync::mpsc;
 
 pub struct Terminal {
     pub rustbox: Arc<Mutex<RustBox>>,
+    event_service: Arc<Mutex<EventService>>,
     results: Mutex<Vec<String>>,
     hightlighted_result_row: AtomicUsize,
-    rx: Arc<Mutex<Receiver<Vec<String>>>>,
     pub tx: Arc<Mutex<Sender<Vec<String>>>>,
     search_complete: AtomicBool
 }
 
 impl Terminal {
 
-    pub fn new() -> Arc<Terminal> {
+    pub fn new(event_service: Arc<Mutex<EventService>>) -> Arc<Terminal> {
         let rustbox = match RustBox::init(Default::default()) {
             Result::Ok(v) => Arc::new(Mutex::new(v)),
             Result::Err(e) => panic!("{}", e),
         };
-        let (tx, rx) = mpsc::channel();
+        let (tx, _) = mpsc::channel();
         Arc::new(
             Terminal{
                 rustbox: rustbox,
+                event_service: event_service,
                 results: Mutex::new(vec![]),
                 hightlighted_result_row: AtomicUsize::new(0),
                 tx: Arc::new(Mutex::new(tx)),
-                rx: Arc::new(Mutex::new(rx)),
                 search_complete: AtomicBool::new(false)
             }
         )
     }
 
     pub fn listen_for_files(&self) {
-        let rx = self.rx.clone();
-        let (stx, srx) = mpsc::channel();
-        thread::spawn(move || {
-            let locked_rx = rx.lock().unwrap();
-            for results in locked_rx.iter() {
-                let _ = stx.send(results);
-            }
-        });
-
         while !self.search_complete.load(Ordering::Relaxed) {
-            match srx.try_recv() {
-                Ok(results) => { self.show_results(results); }
-                Err(TryRecvError::Disconnected) => { break; }
-                Err(TryRecvError::Empty) => {}
+            let event_option;
+            {
+                let mut locked_event_service = self.event_service.lock().unwrap();
+                event_option = locked_event_service.fetch_last_file_finder_event();
+            }
+            match event_option {
+                Some(result) => {
+                    self.show_results(result);
+                },
+                None => {}
             }
         }
     }
@@ -142,6 +140,7 @@ impl Terminal {
         } else {
             max_displayed_results = results.len();
         }
+        rustbox.print(0, 0, rustbox::RB_NORMAL, Color::White, Color::Black, &results.len().to_string());
         for index in 0..max_displayed_results {
             rustbox.print(0, index + 1, rustbox::RB_NORMAL, Color::White, Color::Black, &results[index]);
         }

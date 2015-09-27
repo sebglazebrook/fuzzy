@@ -11,7 +11,7 @@ mod fuzzy;
 use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;
-use fuzzy::event_service::EventService;
+use fuzzy::event_service::{self, EventService};
 
 struct App {
     threads: u8,
@@ -26,10 +26,14 @@ impl App {
 
     pub fn new() -> App {
         let (tx, rx) = channel();
-        let terminal = Terminal::new();
         let event_service = Arc::new(Mutex::new(EventService::new()));
+        let terminal = Terminal::new(event_service.clone());
+        event_service::listen_for_events(event_service.clone(), terminal.clone());
         let file_finder = FileFinder::new(terminal.clone(), event_service.clone());
-        file_finder.lock().unwrap().add_subscriber_channel(terminal.tx.clone());
+        {
+            let tx = event_service.lock().unwrap().tx.clone();
+            file_finder.lock().unwrap().add_subscriber_channel(tx);
+        }
         App { 
             threads: 0,
             terminal: terminal,
@@ -59,8 +63,10 @@ impl App {
         let tx = self.tx.clone();
         self.threads += 1;
         thread::spawn(move|| {
-            let mut locked_local_file_finder = file_finder.lock().unwrap();
-            locked_local_file_finder.start(&env::current_dir().unwrap());
+            {
+                let mut locked_local_file_finder = file_finder.lock().unwrap();
+                locked_local_file_finder.start(&env::current_dir().unwrap());
+            }
             tx.send(1)
         });
     }

@@ -85,7 +85,6 @@ impl FileFinder {
                     }
                     Err(TryRecvError::Empty) => {}
                 }
-                thread::sleep_ms(1);
             }
         });
     }

@@ -1,13 +1,25 @@
 use fuzzy::search_phrase::SearchPhrase;
+use fuzzy::terminal::Terminal;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc;
+use std::thread;
 
 pub struct EventService {
     search_phrases: Vec<SearchPhrase>,
+    pub tx: Arc<Mutex<Sender<Vec<String>>>>,
+    pub rx: Receiver<Vec<String>>,
 }
 
 impl EventService {
 
     pub fn new() -> EventService {
-        EventService { search_phrases: vec![] }
+        let (tx, rx) = mpsc::channel();
+        EventService {
+            search_phrases: vec![],
+            rx: rx,
+            tx: Arc::new(Mutex::new(tx))
+        }
     }
 
     pub fn trigger_search_phrase_changed(&mut self, search_phrase: SearchPhrase) {
@@ -20,5 +32,38 @@ impl EventService {
         search_phrases
     }
 
+    pub fn fetch_last_file_finder_event(&mut self) -> Option<Vec<String>> {
+        let mut done = false;
+        let mut ret = None;
+        while !done {
+            let receive_result;
+            { receive_result = self.rx.try_recv(); }
+            match receive_result {
+                Ok(result)  => { 
+                    ret = Some(result);
+                },
+                Err(_) => {
+                    done = true;
+                }
+            } 
+        }
+        ret
+    }
 }
 
+pub fn listen_for_events(event_service: Arc<Mutex<EventService>>, terminal: Arc<Terminal>) {
+    thread::spawn(move || {
+        loop {
+            let receive_result;
+            {
+                let locked_event_service = event_service.lock().unwrap();
+                receive_result = locked_event_service.rx.try_recv();
+            }
+            match receive_result {
+                Ok(result) => { terminal.show_results(result); },
+                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Disconnected) => { break; }
+            }
+        }
+    });
+}
