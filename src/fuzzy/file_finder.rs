@@ -52,9 +52,17 @@ impl FileFinder {
         for results in rx.iter() {
             let mut result_set = self.result_set.lock().unwrap();
             result_set.add_many(results, root_dir.to_str().unwrap());
-            for subscriber in self.subscriber_channels.iter() {
-                let _ = subscriber.lock().unwrap().send(result_set.to_vec());
+            if result_set.number_of_results() < 100 {
+                for subscriber in self.subscriber_channels.iter() {
+                    let _ = subscriber.lock().unwrap().send(result_set.to_vec());
+                }
+            } else {
+                // update count here?
             }
+        }
+        let result_set = self.result_set.lock().unwrap();
+        for subscriber in self.subscriber_channels.iter() {
+            let _ = subscriber.lock().unwrap().send(result_set.to_vec());
         }
     }
 

@@ -31,6 +31,10 @@ impl ResultSet {
         }
         matched_results
     }
+
+    pub fn number_of_results(&self) -> usize {
+        self.results.len()
+    }
 }
 
 impl Clone for ResultSet {
