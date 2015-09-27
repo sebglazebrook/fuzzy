@@ -12,6 +12,7 @@ use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;
 use fuzzy::event_service::{self, EventService};
+use std::sync::atomic::{Ordering, AtomicBool};
 
 struct App {
     threads: u8,
@@ -20,15 +21,17 @@ struct App {
     event_service: Arc<Mutex<EventService>>,
     rx: std::sync::mpsc::Receiver<usize>,
     tx: std::sync::mpsc::Sender<usize>,
+    app_finished: Arc<AtomicBool>
 }
 
 impl App {
 
     pub fn new() -> App {
+        let app_finished = Arc::new(AtomicBool::new(false));
         let (tx, rx) = channel();
         let event_service = Arc::new(Mutex::new(EventService::new()));
         let terminal = Terminal::new(event_service.clone());
-        event_service::listen_for_events(event_service.clone(), terminal.clone());
+        event_service::listen_for_events(event_service.clone(), terminal.clone(), app_finished.clone());
         let file_finder = FileFinder::new(terminal.clone(), event_service.clone());
         {
             let tx = event_service.lock().unwrap().tx.clone();
@@ -41,6 +44,7 @@ impl App {
             event_service: event_service,
             rx: rx,
             tx: tx,
+            app_finished: app_finished,
         }
     }
 
@@ -85,6 +89,7 @@ impl App {
     }
 
     fn wait_until_exit(&self) {
+        self.app_finished.store(true, Ordering::Relaxed);
         for _ in 0..self.threads {
             self.rx.recv().ok().expect("Could not receive answer");
         }

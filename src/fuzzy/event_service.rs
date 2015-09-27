@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::mpsc;
 use std::thread;
+use std::sync::atomic::{Ordering, AtomicBool};
 
 pub struct EventService {
     search_phrases: Vec<SearchPhrase>,
@@ -51,9 +52,9 @@ impl EventService {
     }
 }
 
-pub fn listen_for_events(event_service: Arc<Mutex<EventService>>, terminal: Arc<Terminal>) {
+pub fn listen_for_events(event_service: Arc<Mutex<EventService>>, terminal: Arc<Terminal>, app_finished: Arc<AtomicBool>) {
     thread::spawn(move || {
-        loop {
+        while !app_finished.load(Ordering::Relaxed) {
             let receive_result;
             {
                 let locked_event_service = event_service.lock().unwrap();

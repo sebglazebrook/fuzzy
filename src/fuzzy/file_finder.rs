@@ -47,6 +47,7 @@ impl FileFinder {
         let mut scanner = DirectoryScanner::new(root_dir.clone(), Arc::new(Mutex::new(tx)));
         thread::spawn(move || {
             scanner.scan(Arc::new(AtomicUsize::new(0)));
+            // what checks this thread and make sure it's killed properly
         });
 
         for results in rx.iter() {
@@ -88,15 +89,12 @@ impl FileFinder {
                 }
                 let locked_rx = rx.lock().unwrap();
                 match locked_rx.try_recv() {
-                    Ok(_) | Err(TryRecvError::Disconnected) => {
-                        break;
-                    }
+                    Ok(_) | Err(TryRecvError::Disconnected) => {  break; }
                     Err(TryRecvError::Empty) => {}
                 }
             }
         });
     }
-
 }
 
 impl Drop for FileFinder {

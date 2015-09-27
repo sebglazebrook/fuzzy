@@ -19,7 +19,9 @@ pub struct Terminal {
     results: Mutex<Vec<String>>,
     hightlighted_result_row: AtomicUsize,
     pub tx: Arc<Mutex<Sender<Vec<String>>>>,
-    search_complete: AtomicBool
+    search_complete: AtomicBool,
+    number_of_results: AtomicUsize,
+
 }
 
 impl Terminal {
@@ -37,7 +39,8 @@ impl Terminal {
                 results: Mutex::new(vec![]),
                 hightlighted_result_row: AtomicUsize::new(0),
                 tx: Arc::new(Mutex::new(tx)),
-                search_complete: AtomicBool::new(false)
+                search_complete: AtomicBool::new(false),
+                number_of_results: AtomicUsize::new(0)
             }
         )
     }
@@ -76,6 +79,7 @@ impl Terminal {
 
                                 // have to do this as a new thread but don't want to 
                                 let local_search_phrase = search_phrase.clone();
+                                // do we have to check to make sure this thread is killed properly
                                 thread::spawn(move || {
                                     let mut local_search_phrase = local_search_phrase.lock().unwrap();
                                     local_search_phrase.update(c.to_string()); 
@@ -96,6 +100,7 @@ impl Terminal {
 
                                 // have to do this as a new thread
                                 let local_search_phrase = search_phrase.clone();
+                                // do we have to make sure this thread is killed properly?
                                 thread::spawn(move || {
                                     let mut local_search_phrase = local_search_phrase.lock().unwrap();
                                     local_search_phrase.delete_last();
@@ -140,7 +145,19 @@ impl Terminal {
         } else {
             max_displayed_results = results.len();
         }
-        rustbox.print(0, 0, rustbox::RB_NORMAL, Color::White, Color::Black, &results.len().to_string());
+        // clean old status bar
+        let mut empty_string = String::new();
+        for _ in 1..self.number_of_results.load(Ordering::Relaxed).to_string().len() {
+            empty_string = empty_string.clone() + " ";
+        }
+        let x_value = rustbox.width() - self.number_of_results.load(Ordering::Relaxed).to_string().len();
+        rustbox.print(x_value, 0, rustbox::RB_NORMAL, Color::White, Color::Black, &empty_string);
+
+        // new status bar
+        let x_value = rustbox.width() - results.len().to_string().len();
+        rustbox.print(x_value, 0, rustbox::RB_NORMAL, Color::White, Color::Black, &results.len().to_string());
+        self.number_of_results.store(results.len(), Ordering::Relaxed);
+
         for index in 0..max_displayed_results {
             rustbox.print(0, index + 1, rustbox::RB_NORMAL, Color::White, Color::Black, &results[index]);
         }
