@@ -19,6 +19,7 @@ pub struct FileFinder {
     rx: Arc<Mutex<Receiver<usize>>>,
     tx: Sender<usize>,
     subscriber_channels: Vec<Arc<Mutex<Sender<Vec<String>>>>>,
+    root_dir: PathBuf
 }
 
 impl FileFinder {
@@ -32,7 +33,8 @@ impl FileFinder {
                 result_set: Arc::new(Mutex::new(ResultSet::new())),
                 tx: tx,
                 rx: Arc::new(Mutex::new(rx)),
-                subscriber_channels: vec![]
+                subscriber_channels: vec![],
+                root_dir: PathBuf::new()
             }
         ))
     }
@@ -42,17 +44,24 @@ impl FileFinder {
     }
 
     pub fn start(&mut self, root_dir: &PathBuf) {
-        self.check_for_filters();
+        self.root_dir = root_dir.clone();
+        self.listen_for_filters();
         let (tx, rx) = mpsc::channel();
         let mut scanner = DirectoryScanner::new(root_dir.clone(), Arc::new(Mutex::new(tx)));
         thread::spawn(move || {
             scanner.scan(Arc::new(AtomicUsize::new(0)));
             // what checks this thread and make sure it's killed properly
         });
+        self.listen_for_scanner_updates(rx);
+        self.update_subscribers();
+    }
 
-        for results in rx.iter() {
+    // ----------- private methods ---------- //
+
+    fn listen_for_scanner_updates(&self, receiver: Receiver<Vec<String>>) {
+        for results in receiver.iter() {
             let mut result_set = self.result_set.lock().unwrap();
-            result_set.add_many(results, root_dir.to_str().unwrap());
+            result_set.add_many(results, self.root_dir.to_str().unwrap());
             if result_set.number_of_results() < 100 {
                 for subscriber in self.subscriber_channels.iter() {
                     let _ = subscriber.lock().unwrap().send(result_set.to_vec());
@@ -61,13 +70,16 @@ impl FileFinder {
                 // update count here?
             }
         }
+    }
+
+    fn update_subscribers(&self) {
         let result_set = self.result_set.lock().unwrap();
         for subscriber in self.subscriber_channels.iter() {
             let _ = subscriber.lock().unwrap().send(result_set.to_vec());
         }
     }
 
-    fn check_for_filters(&self) {
+    fn listen_for_filters(&self) {
         let event_service = self.event_service.clone();
         let result_set = self.result_set.clone();
         let rx = self.rx.clone();
