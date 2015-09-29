@@ -21,7 +21,7 @@ impl DirectoryScanner {
         }
     }
 
-    pub fn scan(&mut self, current_threads: Arc<AtomicUsize>) {
+    pub fn scan(&mut self, current_concurrency: Arc<AtomicUsize>) {
         match fs::read_dir(&self.root_dir) {
             Ok(read_dir) => {
                 let mut filepaths = vec![];
@@ -33,10 +33,10 @@ impl DirectoryScanner {
                                 filepaths.push(entry.path().to_str().unwrap().to_string());
                             } else if filetype.is_dir() && !filetype.is_symlink() {
                                 let path = PathBuf::from(entry.path().to_str().unwrap().to_string());
-                                if self.concurrency_limit_reached(&current_threads) {
-                                    self.scan_directory(path, current_threads.clone());
+                                if self.concurrency_limit_reached(&current_concurrency) {
+                                    self.scan_directory(path, current_concurrency.clone());
                                 } else {
-                                    self.scan_directory_within_thread(path, current_threads.clone());
+                                    self.scan_directory_within_thread(path, current_concurrency.clone());
                                 }
                             }
                         }
@@ -51,24 +51,23 @@ impl DirectoryScanner {
 
     //---------- private methods ------------//
 
-    fn concurrency_limit_reached(&self, current_threads: &Arc<AtomicUsize>) -> bool {
-        current_threads.load(Ordering::Relaxed) >= self.concurrency_limit
+    fn concurrency_limit_reached(&self, current_concurrency: &Arc<AtomicUsize>) -> bool {
+        current_concurrency.load(Ordering::Relaxed) >= self.concurrency_limit
     }
 
-    fn scan_directory(&mut self, path: PathBuf, thread_count: Arc<AtomicUsize>) {
+    fn scan_directory(&mut self, path: PathBuf, currency_concurrency: Arc<AtomicUsize>) {
         let subscriber = self.subscriber.clone();
         let mut scanner = DirectoryScanner::new(path, subscriber);
-        scanner.scan(thread_count);
+        scanner.scan(currency_concurrency);
     }
 
-    fn scan_directory_within_thread(&mut self, path: PathBuf, thread_count: Arc<AtomicUsize>) {
-        thread_count.fetch_add(1, Ordering::Relaxed);
-        let spawn_thread_count = thread_count.clone();
+    fn scan_directory_within_thread(&mut self, path: PathBuf, current_concurrency: Arc<AtomicUsize>) {
+        current_concurrency.fetch_add(1, Ordering::Relaxed);
         let subscriber = self.subscriber.clone();
         thread::spawn(move||{
             let mut scanner = DirectoryScanner::new(path, subscriber);
-            scanner.scan(spawn_thread_count.clone());
-            spawn_thread_count.fetch_sub(1, Ordering::Relaxed);
+            scanner.scan(current_concurrency.clone());
+            current_concurrency.fetch_sub(1, Ordering::Relaxed);
         });
     }
 }
