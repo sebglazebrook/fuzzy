@@ -68,10 +68,8 @@ impl App {
         let tx = self.tx.clone();
         self.threads += 1;
         thread::spawn(move|| {
-            {
-                let mut locked_local_file_finder = file_finder.lock().unwrap();
-                locked_local_file_finder.start(&env::current_dir().unwrap());
-            }
+            let mut locked_local_file_finder = file_finder.lock().unwrap();
+            locked_local_file_finder.start(&env::current_dir().unwrap());
             tx.send(1)
         });
     }
