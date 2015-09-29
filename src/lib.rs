@@ -1,5 +1,6 @@
 extern crate rustbox;
 extern crate regex;
+extern crate crossbeam;
 
 use std::env;
 use std::thread;

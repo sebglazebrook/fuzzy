@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 regex = "0.1.8"
 time = "0.1"
+crossbeam = "0.1.5"
 
 [dependencies.rustbox]
 git = "http://github.com/sebglazebrook/rustbox.git"

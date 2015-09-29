@@ -3,6 +3,7 @@ name = "fuzzy"
 version = "0.2.1"
 dependencies = [
  "clipboard 0.0.3 (git+https://github.com/aweinstock314/rust-clipboard.git)",
+ "crossbeam 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustbox 0.7.1 (git+http://github.com/sebglazebrook/rustbox.git)",
  "time 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -52,6 +53,11 @@ dependencies = [
  "user32-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "crossbeam"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gag"

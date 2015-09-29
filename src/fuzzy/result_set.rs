@@ -1,4 +1,6 @@
+use crossbeam;
 use regex::Regex;
+use std::sync::mpsc::channel;
 
 pub struct ResultSet {
     pub results: Vec<String>,
@@ -24,13 +26,33 @@ impl ResultSet {
 
     pub fn apply_filter(&self, regex: Regex) -> Vec<String> {
         let mut matched_results = vec![];
-        for content in self.results.iter() {
-            if regex.is_match(content) {
-                matched_results.push(content.clone());
+        let mut receivers = vec![];
+        let filter_concurrency_limit = 8;
+        crossbeam::scope(|scope| {
+            let chunk_length = self.results.len() / filter_concurrency_limit;
+            for chunk in self.results.chunks(chunk_length) {
+                let (tx, rx) = channel();
+                receivers.push(rx);
+                let local_regex = regex.clone();
+                scope.spawn(move || {
+                    let mut local_matches = vec![];
+                    for content in chunk.iter() {
+                        if local_regex.is_match(content) {
+                            local_matches.push(content.clone());
+                        }
+                    }
+                    let _ = tx.send(local_matches);
+                });
             }
+        });
+
+        for receiver in receivers.iter() {
+            let local_matches = receiver.recv().unwrap();
+            matched_results.extend(local_matches);
         }
         matched_results
     }
+
 
     pub fn number_of_results(&self) -> usize {
         self.results.len()
