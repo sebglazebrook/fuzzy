@@ -35,20 +35,20 @@ impl EventService {
 
     pub fn fetch_last_file_finder_event(&mut self) -> Option<Vec<String>> {
         let mut done = false;
-        let mut ret = None;
+        let mut return_value = None;
         while !done {
             let receive_result;
             { receive_result = self.rx.try_recv(); }
             match receive_result {
                 Ok(result)  => { 
-                    ret = Some(result);
+                    return_value = Some(result);
                 },
                 Err(_) => {
                     done = true;
                 }
             } 
         }
-        ret
+        return_value
     }
 }
 
