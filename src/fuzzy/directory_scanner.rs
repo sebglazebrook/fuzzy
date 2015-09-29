@@ -16,7 +16,6 @@ impl DirectoryScanner {
     pub fn new(root_dir: PathBuf, subscriber: Arc<Mutex<Sender<Vec<String>>>>) -> DirectoryScanner {
         DirectoryScanner{
             root_dir: root_dir,
-            threads: 0,
             subscriber: subscriber,
             concurrency_limit: 9,
         }
