@@ -15,13 +15,12 @@ use std::sync::mpsc;
 
 pub struct Terminal {
     pub rustbox: Arc<Mutex<RustBox>>,
+    pub tx: Arc<Mutex<Sender<Vec<String>>>>,
     event_service: Arc<Mutex<EventService>>,
     results: Mutex<Vec<String>>,
     hightlighted_result_row: AtomicUsize,
-    pub tx: Arc<Mutex<Sender<Vec<String>>>>,
     search_complete: AtomicBool,
     number_of_results: AtomicUsize,
-
 }
 
 impl Terminal {
