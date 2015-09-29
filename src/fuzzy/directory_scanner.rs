@@ -7,7 +7,6 @@ use std::thread;
 
 pub struct DirectoryScanner {
     root_dir: PathBuf,
-    threads: usize,
     subscriber: Arc<Mutex<Sender<Vec<String>>>>,
     concurrency_limit: usize,
 }
@@ -65,7 +64,6 @@ impl DirectoryScanner {
 
     fn scan_directory_within_thread(&mut self, path: PathBuf, thread_count: Arc<AtomicUsize>) {
         thread_count.fetch_add(1, Ordering::Relaxed);
-        self.threads += 1;
         let spawn_thread_count = thread_count.clone();
         let subscriber = self.subscriber.clone();
         thread::spawn(move||{
