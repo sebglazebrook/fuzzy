@@ -56,8 +56,7 @@ impl DirectoryScanner {
     }
 
     fn scan_directory(&mut self, path: PathBuf, currency_concurrency: Arc<AtomicUsize>) {
-        let subscriber = self.subscriber.clone();
-        let mut scanner = DirectoryScanner::new(path, subscriber);
+        let mut scanner = DirectoryScanner::new(path, self.subscriber.clone());
         scanner.scan(currency_concurrency);
     }
 
