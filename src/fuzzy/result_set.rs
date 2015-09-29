@@ -31,8 +31,8 @@ impl ResultSet {
     pub fn apply_filter(&self, regex: Regex) -> Vec<String> {
         let mut matched_results = vec![];
         let mut receivers = vec![];
-        let filter_concurrency_limit = 8;
         crossbeam::scope(|scope| {
+            let filter_concurrency_limit = 8;
             let chunk_length = self.results.len() / filter_concurrency_limit;
             for chunk in self.results.chunks(chunk_length) {
                 let (tx, rx) = channel();
