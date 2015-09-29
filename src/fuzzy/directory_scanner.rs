@@ -9,6 +9,7 @@ pub struct DirectoryScanner {
     root_dir: PathBuf,
     threads: usize,
     subscriber: Arc<Mutex<Sender<Vec<String>>>>,
+    concurrency_limit: usize,
 }
 
 impl DirectoryScanner {
@@ -17,7 +18,8 @@ impl DirectoryScanner {
         DirectoryScanner{
             root_dir: root_dir,
             threads: 0,
-            subscriber: subscriber
+            subscriber: subscriber,
+            concurrency_limit: 9,
         }
     }
 
@@ -52,7 +54,7 @@ impl DirectoryScanner {
     //---------- private methods ------------//
 
     fn concurrency_limit_reached(&self, current_threads: &Arc<AtomicUsize>) -> bool {
-        current_threads.load(Ordering::Relaxed) >= 9
+        current_threads.load(Ordering::Relaxed) >= self.concurrency_limit
     }
 
     fn scan_directory(&mut self, path: PathBuf, thread_count: Arc<AtomicUsize>) {
