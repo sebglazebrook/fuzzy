@@ -15,7 +15,11 @@ impl ResultSet {
     pub fn add_many(&mut self, results: Vec<String>, root_dir: &str) {
         let mut new = vec![];
         for result in results {
-            new.push(result.replace(root_dir, "")[1..].to_string());
+            let mut sanitized_string = result.clone();
+            if root_dir != "/" {
+                sanitized_string = result.replace(root_dir, "")[1..].to_string();
+            }
+            new.push(sanitized_string);
         }
         self.results.extend(new);
     }
