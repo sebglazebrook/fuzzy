@@ -22,6 +22,7 @@ impl ResultSet {
             new.push(sanitized_string);
         }
         self.results.extend(new);
+        self.results.sort();
     }
 
     pub fn to_vec(&self) -> Vec<String> {
