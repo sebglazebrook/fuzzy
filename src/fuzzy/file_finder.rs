@@ -9,14 +9,13 @@ use fuzzy::event_service::EventService;
 use fuzzy::directory_scanner::DirectoryScanner;
 use std::ops::Drop;
 use std::thread;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
 
 pub struct FileFinder {
     pub terminal: Arc<Terminal>,
     event_service: Arc<Mutex<EventService>>,
     result_set: Arc<Mutex<ResultSet>>,
-    rx: Arc<Mutex<Receiver<usize>>>,
     tx: Sender<usize>,
     subscriber_channels: Vec<Arc<Mutex<Sender<Vec<String>>>>>,
     root_dir: PathBuf
@@ -25,14 +24,13 @@ pub struct FileFinder {
 impl FileFinder {
 
     pub fn new(terminal: Arc<Terminal>, event_service: Arc<Mutex<EventService>>) -> Arc<Mutex<FileFinder>> {
-        let (tx, rx) = mpsc::channel();
+        let (tx, _) = mpsc::channel();
         Arc::new(Mutex::new(
             FileFinder { 
                 terminal: terminal,
                 event_service: event_service,
                 result_set: Arc::new(Mutex::new(ResultSet::new())),
                 tx: tx,
-                rx: Arc::new(Mutex::new(rx)),
                 subscriber_channels: vec![],
                 root_dir: PathBuf::new()
             }
@@ -82,15 +80,13 @@ impl FileFinder {
     fn listen_for_filters(&self) {
         let event_service = self.event_service.clone();
         let result_set = self.result_set.clone();
-        let rx = self.rx.clone();
         let subscriber_channels = self.subscriber_channels.clone();
         thread::spawn(move|| {
             loop {
-                let events;
-                {
-                    let mut event_service = event_service.lock().unwrap();
-                    events = event_service.fetch_all_search_query_change_events();
-                }
+                let mut event_service = event_service.lock().unwrap();
+                let condvar = event_service.condvar.clone();
+                event_service = condvar.wait(event_service).unwrap();
+                let events = event_service.fetch_all_search_query_change_events();
                 if events.len() > 0 {
                     let last_event = events.last().unwrap();
                     let locked_result_set = result_set.lock().unwrap();
@@ -98,11 +94,8 @@ impl FileFinder {
                     for subscriber in subscriber_channels.iter() {
                         let _ = subscriber.lock().unwrap().send(filtered_results.clone());
                     }
-                }
-                let locked_rx = rx.lock().unwrap();
-                match locked_rx.try_recv() {
-                    Ok(_) | Err(TryRecvError::Disconnected) => {  break; }
-                    Err(TryRecvError::Empty) => {}
+                } else {
+                    break;
                 }
             }
         });

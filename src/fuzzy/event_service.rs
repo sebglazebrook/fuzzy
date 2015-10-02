@@ -1,6 +1,6 @@
 use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::terminal::Terminal;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::mpsc;
 use std::thread;
@@ -10,6 +10,7 @@ pub struct EventService {
     search_phrases: Vec<SearchPhrase>,
     pub tx: Arc<Mutex<Sender<Vec<String>>>>,
     pub rx: Receiver<Vec<String>>,
+    pub condvar: Arc<Condvar>
 }
 
 impl EventService {
@@ -19,12 +20,15 @@ impl EventService {
         EventService {
             search_phrases: vec![],
             rx: rx,
-            tx: Arc::new(Mutex::new(tx))
+            tx: Arc::new(Mutex::new(tx)),
+            condvar: Arc::new(Condvar::new())
+
         }
     }
 
     pub fn trigger_search_phrase_changed(&mut self, search_phrase: SearchPhrase) {
         self.search_phrases.push(search_phrase);
+        self.condvar.notify_all();
     }
 
     pub fn fetch_all_search_query_change_events(&mut self) -> Vec<SearchPhrase> {
@@ -49,6 +53,13 @@ impl EventService {
             } 
         }
         return_value
+    }
+}
+
+impl Drop for EventService {
+
+    fn drop(&mut self) {
+        self.condvar.notify_all();
     }
 }
 
