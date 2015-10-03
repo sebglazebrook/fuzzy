@@ -14,7 +14,7 @@ use std::sync::mpsc;
 
 pub struct FileFinder {
     pub terminal: Arc<Terminal>,
-    event_service: Arc<Mutex<EventService>>,
+    event_service: Arc<EventService>,
     result_set: Arc<Mutex<ResultSet>>,
     tx: Sender<usize>,
     subscriber_channels: Vec<Arc<Mutex<Sender<Vec<String>>>>>,
@@ -23,7 +23,7 @@ pub struct FileFinder {
 
 impl FileFinder {
 
-    pub fn new(terminal: Arc<Terminal>, event_service: Arc<Mutex<EventService>>) -> Arc<Mutex<FileFinder>> {
+    pub fn new(terminal: Arc<Terminal>, event_service: Arc<EventService>) -> Arc<Mutex<FileFinder>> {
         let (tx, _) = mpsc::channel();
         Arc::new(Mutex::new(
             FileFinder { 
@@ -83,10 +83,10 @@ impl FileFinder {
         let subscriber_channels = self.subscriber_channels.clone();
         thread::spawn(move|| {
             loop {
-                let mut event_service = event_service.lock().unwrap();
                 let condvar = event_service.condvar.clone();
-                event_service = condvar.wait(event_service).unwrap();
-                let events = event_service.fetch_all_search_query_change_events();
+                let mut search_phrases = event_service.search_phrases.lock().unwrap();
+                search_phrases = condvar.wait(search_phrases).unwrap();
+                let events = search_phrases.export();
                 if events.len() > 0 {
                     let last_event = events.last().unwrap();
                     let locked_result_set = result_set.lock().unwrap();

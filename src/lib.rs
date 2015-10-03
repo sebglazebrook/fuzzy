@@ -19,7 +19,7 @@ struct App {
     threads: u8,
     terminal: Arc<Terminal>,
     file_finder: Arc<Mutex<FileFinder>>,
-    event_service: Arc<Mutex<EventService>>,
+    event_service: Arc<EventService>,
     rx: std::sync::mpsc::Receiver<usize>,
     tx: std::sync::mpsc::Sender<usize>,
     app_finished: Arc<AtomicBool>
@@ -30,12 +30,12 @@ impl App {
     pub fn new() -> App {
         let app_finished = Arc::new(AtomicBool::new(false));
         let (tx, rx) = channel();
-        let event_service = Arc::new(Mutex::new(EventService::new()));
+        let event_service = Arc::new(EventService::new());
         let terminal = Terminal::new(event_service.clone());
         event_service::listen_for_events(event_service.clone(), terminal.clone(), app_finished.clone());
         let file_finder = FileFinder::new(terminal.clone(), event_service.clone());
         {
-            let tx = event_service.lock().unwrap().tx.clone();
+            let tx = event_service.tx.clone();
             file_finder.lock().unwrap().add_subscriber_channel(tx);
         }
         App { 

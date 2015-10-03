@@ -6,10 +6,31 @@ use std::sync::mpsc;
 use std::thread;
 use std::sync::atomic::{Ordering, AtomicBool};
 
+pub struct SearchPhrases {
+    data: Vec<SearchPhrase>
+}
+
+impl SearchPhrases {
+
+    pub fn new() -> SearchPhrases {
+        SearchPhrases { data: vec![] }
+    }
+
+    pub fn push(&mut self, data: SearchPhrase) {
+        self.data.push(data);
+    }
+
+    pub fn export(&mut self) -> Vec<SearchPhrase> {
+        let data = self.data.clone();
+        self.data.clear();
+        data
+    }
+}
+
 pub struct EventService {
-    search_phrases: Vec<SearchPhrase>,
+    pub search_phrases: Arc<Mutex<SearchPhrases>>,
     pub tx: Arc<Mutex<Sender<Vec<String>>>>,
-    pub rx: Receiver<Vec<String>>,
+    pub rx: Arc<Mutex<Receiver<Vec<String>>>>,
     pub condvar: Arc<Condvar>
 }
 
@@ -18,31 +39,27 @@ impl EventService {
     pub fn new() -> EventService {
         let (tx, rx) = mpsc::channel();
         EventService {
-            search_phrases: vec![],
-            rx: rx,
+            search_phrases: Arc::new(Mutex::new(SearchPhrases::new())),
+            rx: Arc::new(Mutex::new(rx)),
             tx: Arc::new(Mutex::new(tx)),
             condvar: Arc::new(Condvar::new())
-
         }
     }
 
-    pub fn trigger_search_phrase_changed(&mut self, search_phrase: SearchPhrase) {
-        self.search_phrases.push(search_phrase);
+    pub fn trigger_search_phrase_changed(&self, search_phrase: SearchPhrase) {
+        self.search_phrases.lock().unwrap().push(search_phrase);
         self.condvar.notify_all();
     }
 
-    pub fn fetch_all_search_query_change_events(&mut self) -> Vec<SearchPhrase> {
-        let search_phrases = self.search_phrases.clone();
-        self.search_phrases.clear();
-        search_phrases
-    }
-
-    pub fn fetch_last_file_finder_event(&mut self) -> Option<Vec<String>> {
+    pub fn fetch_last_file_finder_event(&self) -> Option<Vec<String>> {
         let mut done = false;
         let mut return_value = None;
         while !done {
             let receive_result;
-            { receive_result = self.rx.try_recv(); }
+            {
+                let recevier = self.rx.lock().unwrap();
+                receive_result = recevier.try_recv();
+            }
             match receive_result {
                 Ok(result)  => { 
                     return_value = Some(result);
@@ -63,13 +80,12 @@ impl Drop for EventService {
     }
 }
 
-pub fn listen_for_events(event_service: Arc<Mutex<EventService>>, terminal: Arc<Terminal>, app_finished: Arc<AtomicBool>) {
+pub fn listen_for_events(event_service: Arc<EventService>, terminal: Arc<Terminal>, app_finished: Arc<AtomicBool>) {
     thread::spawn(move || {
         while !app_finished.load(Ordering::Relaxed) {
             let receive_result;
             {
-                let locked_event_service = event_service.lock().unwrap();
-                receive_result = locked_event_service.rx.try_recv();
+                receive_result = event_service.rx.lock().unwrap().try_recv();
             }
             match receive_result {
                 Ok(result) => { terminal.show_results(result); },

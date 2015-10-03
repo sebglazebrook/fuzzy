@@ -1,37 +1,37 @@
 extern crate regex;
 
 use regex::Regex;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use fuzzy::event_service::EventService;
 
 pub struct SearchPhrase {
     pub content: String,
-    event_service: Arc<Mutex<EventService>>
+    event_service: Arc<EventService>
 }
 
 impl SearchPhrase {
 
-    pub fn init(event_service: Arc<Mutex<EventService>>) -> SearchPhrase {
+    pub fn init(event_service: Arc<EventService>) -> SearchPhrase {
         SearchPhrase { 
             content: String::new(),
             event_service: event_service
         }
     }
 
-    pub fn from_string(string: String, event_service: Arc<Mutex<EventService>>) -> SearchPhrase {
+    pub fn from_string(string: String, event_service: Arc<EventService>) -> SearchPhrase {
         SearchPhrase { content: string, event_service: event_service }
     }
 
     pub fn update(&mut self, string: String)  {
         self.content = self.content.clone() + &string[..];
-        self.event_service.lock().unwrap().trigger_search_phrase_changed(self.clone());
+        self.event_service.trigger_search_phrase_changed(self.clone());
     }
 
     pub fn delete_last(&mut self)  {
         let mut new_string = self.content.clone();
         new_string.pop();
         self.content = new_string;
-        self.event_service.lock().unwrap().trigger_search_phrase_changed(self.clone());
+        self.event_service.trigger_search_phrase_changed(self.clone());
     }
 
     pub fn to_regex(&self) -> Regex {

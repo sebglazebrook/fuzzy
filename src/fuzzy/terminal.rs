@@ -16,7 +16,7 @@ use std::sync::mpsc;
 pub struct Terminal {
     pub rustbox: Arc<Mutex<RustBox>>,
     pub tx: Arc<Mutex<Sender<Vec<String>>>>,
-    event_service: Arc<Mutex<EventService>>,
+    event_service: Arc<EventService>,
     results: Mutex<Vec<String>>,
     hightlighted_result_row: AtomicUsize,
     search_complete: AtomicBool,
@@ -25,7 +25,7 @@ pub struct Terminal {
 
 impl Terminal {
 
-    pub fn new(event_service: Arc<Mutex<EventService>>) -> Arc<Terminal> {
+    pub fn new(event_service: Arc<EventService>) -> Arc<Terminal> {
         let rustbox = match RustBox::init(Default::default()) {
             Result::Ok(v) => Arc::new(Mutex::new(v)),
             Result::Err(e) => panic!("{}", e),
@@ -48,8 +48,7 @@ impl Terminal {
         while !self.search_complete.load(Ordering::Relaxed) {
             let event_option;
             {
-                let mut locked_event_service = self.event_service.lock().unwrap();
-                event_option = locked_event_service.fetch_last_file_finder_event();
+                event_option = self.event_service.fetch_last_file_finder_event();
             }
             match event_option {
                 Some(result) => {
