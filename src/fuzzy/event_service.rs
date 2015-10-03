@@ -1,10 +1,7 @@
 use fuzzy::search_phrase::SearchPhrase;
-use fuzzy::terminal::Terminal;
 use std::sync::{Arc, Mutex, Condvar};
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc;
-use std::thread;
-use std::sync::atomic::{Ordering, AtomicBool};
 
 pub struct SearchPhrases {
     data: Vec<SearchPhrase>
@@ -27,11 +24,34 @@ impl SearchPhrases {
     }
 }
 
+pub struct FileFinderEvents {
+    data: Vec<Vec<String>>
+}
+
+impl FileFinderEvents {
+
+    pub fn new() -> FileFinderEvents {
+        FileFinderEvents { data: vec![] }
+    }
+
+    pub fn push(&mut self, data: Vec<String>) {
+        self.data.push(data);
+    }
+
+    pub fn export(&mut self) -> Vec<Vec<String>> {
+        let data = self.data.clone();
+        self.data.clear();
+        data
+    }
+}
+
 pub struct EventService {
     pub search_phrases: Arc<Mutex<SearchPhrases>>,
+    pub file_finder_events: Arc<Mutex<FileFinderEvents>>,
     pub tx: Arc<Mutex<Sender<Vec<String>>>>,
     pub rx: Arc<Mutex<Receiver<Vec<String>>>>,
-    pub condvar: Arc<Condvar>
+    pub condvar: Arc<Condvar>,
+    pub file_finder_condvar: Arc<Condvar>
 }
 
 impl EventService {
@@ -40,9 +60,11 @@ impl EventService {
         let (tx, rx) = mpsc::channel();
         EventService {
             search_phrases: Arc::new(Mutex::new(SearchPhrases::new())),
+            file_finder_events: Arc::new(Mutex::new(FileFinderEvents::new())),
             rx: Arc::new(Mutex::new(rx)),
             tx: Arc::new(Mutex::new(tx)),
-            condvar: Arc::new(Condvar::new())
+            condvar: Arc::new(Condvar::new()),
+            file_finder_condvar: Arc::new(Condvar::new())
         }
     }
 
@@ -51,25 +73,9 @@ impl EventService {
         self.condvar.notify_all();
     }
 
-    pub fn fetch_last_file_finder_event(&self) -> Option<Vec<String>> {
-        let mut done = false;
-        let mut return_value = None;
-        while !done {
-            let receive_result;
-            {
-                let recevier = self.rx.lock().unwrap();
-                receive_result = recevier.try_recv();
-            }
-            match receive_result {
-                Ok(result)  => { 
-                    return_value = Some(result);
-                },
-                Err(_) => {
-                    done = true;
-                }
-            } 
-        }
-        return_value
+    pub fn trigger_file_finder_event(&self, results: Vec<String>) {
+        self.file_finder_events.lock().unwrap().push(results);
+        self.file_finder_condvar.notify_all();
     }
 }
 
@@ -78,20 +84,4 @@ impl Drop for EventService {
     fn drop(&mut self) {
         self.condvar.notify_all();
     }
-}
-
-pub fn listen_for_events(event_service: Arc<EventService>, terminal: Arc<Terminal>, app_finished: Arc<AtomicBool>) {
-    thread::spawn(move || {
-        while !app_finished.load(Ordering::Relaxed) {
-            let receive_result;
-            {
-                receive_result = event_service.rx.lock().unwrap().try_recv();
-            }
-            match receive_result {
-                Ok(result) => { terminal.show_results(result); },
-                Err(TryRecvError::Empty) => {}
-                Err(TryRecvError::Disconnected) => { break; }
-            }
-        }
-    });
 }

@@ -61,9 +61,7 @@ impl FileFinder {
             let mut result_set = self.result_set.lock().unwrap();
             result_set.add_many(results, self.root_dir.to_str().unwrap());
             if result_set.number_of_results() < 100 {
-                for subscriber in self.subscriber_channels.iter() {
-                    let _ = subscriber.lock().unwrap().send(result_set.to_vec());
-                }
+                self.event_service.trigger_file_finder_event(result_set.to_vec());
             } else {
                 // update count here?
             }
@@ -72,15 +70,12 @@ impl FileFinder {
 
     fn update_subscribers(&self) {
         let result_set = self.result_set.lock().unwrap();
-        for subscriber in self.subscriber_channels.iter() {
-            let _ = subscriber.lock().unwrap().send(result_set.to_vec());
-        }
+        self.event_service.trigger_file_finder_event(result_set.to_vec());
     }
 
     fn listen_for_filters(&self) {
         let event_service = self.event_service.clone();
         let result_set = self.result_set.clone();
-        let subscriber_channels = self.subscriber_channels.clone();
         thread::spawn(move|| {
             loop {
                 let condvar = event_service.condvar.clone();
@@ -91,9 +86,7 @@ impl FileFinder {
                     let last_event = events.last().unwrap();
                     let locked_result_set = result_set.lock().unwrap();
                     let filtered_results = locked_result_set.apply_filter(last_event.to_regex());
-                    for subscriber in subscriber_channels.iter() {
-                        let _ = subscriber.lock().unwrap().send(filtered_results.clone());
-                    }
+                    event_service.trigger_file_finder_event(filtered_results.clone());
                 } else {
                     break;
                 }

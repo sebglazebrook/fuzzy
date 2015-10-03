@@ -46,15 +46,15 @@ impl Terminal {
 
     pub fn listen_for_files(&self) {
         while !self.search_complete.load(Ordering::Relaxed) {
-            let event_option;
-            {
-                event_option = self.event_service.fetch_last_file_finder_event();
-            }
-            match event_option {
-                Some(result) => {
-                    self.show_results(result);
-                },
-                None => {}
+            let mut file_finder_events = self.event_service.file_finder_events.lock().unwrap();
+            let condvar = self.event_service.file_finder_condvar.clone();
+
+            file_finder_events = condvar.wait(file_finder_events).unwrap();
+            if self.search_complete.load(Ordering::Relaxed) {
+                break;
+            } else {
+                let events = file_finder_events.export();
+                self.show_results(events.last().unwrap().clone());
             }
         }
     }
@@ -131,6 +131,7 @@ impl Terminal {
             }
         }
         self.search_complete.store(true, Ordering::Relaxed);
+        self.event_service.file_finder_condvar.notify_all();
     }
 
     pub fn show_results(&self, results: Vec<String>) {

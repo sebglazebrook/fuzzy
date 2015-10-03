@@ -12,7 +12,7 @@ mod fuzzy;
 use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::terminal::Terminal;
 use fuzzy::file_finder::FileFinder;
-use fuzzy::event_service::{self, EventService};
+use fuzzy::event_service::EventService;
 use std::sync::atomic::{Ordering, AtomicBool};
 
 struct App {
@@ -32,7 +32,6 @@ impl App {
         let (tx, rx) = channel();
         let event_service = Arc::new(EventService::new());
         let terminal = Terminal::new(event_service.clone());
-        event_service::listen_for_events(event_service.clone(), terminal.clone(), app_finished.clone());
         let file_finder = FileFinder::new(terminal.clone(), event_service.clone());
         {
             let tx = event_service.tx.clone();
