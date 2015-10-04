@@ -78,9 +78,11 @@ impl FileFinder {
         let result_set = self.result_set.clone();
         thread::spawn(move|| {
             loop {
+
                 let condvar = event_service.condvar.clone();
                 let mut search_phrases = event_service.search_phrases.lock().unwrap();
                 search_phrases = condvar.wait(search_phrases).unwrap();
+
                 let events = search_phrases.export();
                 if events.len() > 0 {
                     let last_event = events.last().unwrap();

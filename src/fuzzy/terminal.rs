@@ -6,7 +6,8 @@ use rustbox::{RustBox, Key, Color};
 use self::clipboard::ClipboardContext;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicUsize, Ordering, AtomicBool};
+use std::sync::atomic::{Ordering, AtomicBool};
+use fuzzy::results_view::ResultsView;
 use fuzzy::search_phrase::SearchPhrase;
 use fuzzy::event_service::EventService;
 use std::thread;
@@ -17,10 +18,8 @@ pub struct Terminal {
     pub rustbox: Arc<Mutex<RustBox>>,
     pub tx: Arc<Mutex<Sender<Vec<String>>>>,
     event_service: Arc<EventService>,
-    results: Mutex<Vec<String>>,
-    hightlighted_result_row: AtomicUsize,
     search_complete: AtomicBool,
-    number_of_results: AtomicUsize,
+    results_view: ResultsView,
 }
 
 impl Terminal {
@@ -35,11 +34,9 @@ impl Terminal {
             Terminal{
                 rustbox: rustbox,
                 event_service: event_service,
-                results: Mutex::new(vec![]),
-                hightlighted_result_row: AtomicUsize::new(0),
                 tx: Arc::new(Mutex::new(tx)),
                 search_complete: AtomicBool::new(false),
-                number_of_results: AtomicUsize::new(0)
+                results_view: ResultsView::new(),
             }
         )
     }
@@ -105,21 +102,21 @@ impl Terminal {
                                 });
                             }
                             Some(Key::Ctrl('j')) => {
-                                self.hightlight_next_row(&rustbox);
+                                self.results_view.highlight_next(&rustbox);
                             }
                             Some(Key::Ctrl('k')) => {
-                                self.hightlight_previous_row(&rustbox);
+                                self.results_view.highlight_previous(&rustbox);
                             }
                             Some(Key::Ctrl('y')) => {
                                 let mut ctx = ClipboardContext::new().unwrap();
-                                let _ = ctx.set_contents(self.get_highlighted_result());
+                                let _ = ctx.set_contents(self.results_view.get_highlighted());
                                 done = true;
                             }
                             Some(Key::Down) => {
-                                self.hightlight_next_row(&rustbox);
+                                self.results_view.highlight_next(&rustbox);
                             }
                             Some(Key::Up) => {
-                                self.hightlight_previous_row(&rustbox);
+                                self.results_view.highlight_previous(&rustbox);
                             }
                             Some(Key::Enter) => { done = true; }
                             _ => {  }
@@ -135,85 +132,14 @@ impl Terminal {
     }
 
     pub fn show_results(&self, results: Vec<String>) {
-        self.clear_results();
-        let rustbox = self.rustbox.clone();
-        let rustbox = rustbox.lock().unwrap();
-        let max_displayed_results;
-        if results.len() > rustbox.height() {
-            max_displayed_results = rustbox.height();
-        } else {
-            max_displayed_results = results.len();
-        }
-        // clean old status bar
-        let mut empty_string = String::new();
-        for _ in 1..self.number_of_results.load(Ordering::Relaxed).to_string().len() {
-            empty_string = empty_string.clone() + " ";
-        }
-        let x_value = rustbox.width() - self.number_of_results.load(Ordering::Relaxed).to_string().len();
-        rustbox.print(x_value, 0, rustbox::RB_NORMAL, Color::White, Color::Black, &empty_string);
-
-        // new status bar
-        let x_value = rustbox.width() - results.len().to_string().len();
-        rustbox.print(x_value, 0, rustbox::RB_NORMAL, Color::White, Color::Black, &results.len().to_string());
-        self.number_of_results.store(results.len(), Ordering::Relaxed);
-
-        for index in 0..max_displayed_results {
-            rustbox.print(0, index + 1, rustbox::RB_NORMAL, Color::White, Color::Black, &results[index]);
-        }
-        rustbox.present();
-        let mut locked_results = self.results.lock().unwrap();
-        locked_results.clear();
-        locked_results.extend(results);
-    }
-
-    fn clear_results(&self) {
-        let rustbox = self.rustbox.clone();
-        let rustbox = rustbox.lock().unwrap();
-        // clear all result rows
-        let mut empty_line = String::new(); // TODO there must be a better way of doing this in rust
-        for _ in 1..(rustbox.width() + 1) {
-            empty_line = empty_line.clone() + " ";
-        }
-        for row in 1..rustbox.height() {
-            rustbox.print(0, row, rustbox::RB_NORMAL, Color::White, Color::Black, &empty_line);
-        }
-    }
-
-    fn hightlight_next_row(&self, rustbox: &RustBox) {
-        let results = self.results.lock().unwrap();
-        // unhighlight the current row
-        if self.hightlighted_result_row.load(Ordering::Relaxed) > 0 {
-            rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::White, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
-        }
-        // highlight next row
-        self.hightlighted_result_row.fetch_add(1, Ordering::Relaxed);
-        rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
-        rustbox.present();
-    }
-
-    fn hightlight_previous_row(&self, rustbox: &RustBox) {
-        let results = self.results.lock().unwrap();
-        // unhighlight the current row
-        if self.hightlighted_result_row.load(Ordering::Relaxed) > 0 {
-            rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::White, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
-            if self.hightlighted_result_row.load(Ordering::Relaxed) > 1 {
-                // hightlight the previous row
-                self.hightlighted_result_row.fetch_sub(1, Ordering::Relaxed);
-                rustbox.print(0, self.hightlighted_result_row.load(Ordering::Relaxed), rustbox::RB_NORMAL, Color::Magenta, Color::Black, &results[(self.hightlighted_result_row.load(Ordering::Relaxed) - 1)]);
-            } else {
-                self.hightlighted_result_row.store(0, Ordering::Relaxed)
-            }
-            rustbox.present();
-        }
+        self.results_view.update(self.rustbox.clone(), results);
     }
 
     pub fn has_highlighted_result(&self) -> bool {
-        self.hightlighted_result_row.load(Ordering::Relaxed) > 0
+        self.results_view.has_highlighted_result()
     }
 
     pub fn get_highlighted_result(&self) -> String {
-        let index = self.hightlighted_result_row.load(Ordering::Relaxed);
-        index.to_string();
-        self.results.lock().unwrap()[index - 1].clone()
+        self.results_view.get_highlighted()
     }
 }
