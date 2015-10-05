@@ -45,13 +45,68 @@ impl ResultSet {
     pub fn to_vec(&self) -> Vec<String> {
         if self.filter_applied {
             self.filtered_results.clone()
-
         } else {
             self.results.clone()
         }
     }
 
     pub fn apply_filter(&mut self, regex: Regex) -> Vec<String> {
+        if self.filter_applied && self.additive_filter(&regex) {
+            self.apply_to_filtered(regex)
+        } else {
+            self.apply_to_all(regex)
+        }
+    }
+
+    pub fn number_of_results(&self) -> usize {
+        self.results.len()
+    }
+
+    // ------ private methods ----------//
+
+    fn re_run_filter(&mut self) {
+        let string = self.filter_string.clone();
+        self.apply_filter(Regex::new(&string).unwrap());
+    }
+
+    fn additive_filter(&self, regex: &Regex) -> bool {
+        String::from(regex.as_str()).contains(&self.filter_string)
+    }
+
+    fn apply_to_filtered(&mut self, regex: Regex) -> Vec<String> {
+        let mut matched_results = vec![];
+        let mut receivers = vec![];
+        crossbeam::scope(|scope| {
+            let filter_concurrency_limit = 8;
+            let chunk_length = self.results.len() / filter_concurrency_limit;
+            for chunk in self.filtered_results.chunks(chunk_length) {
+                let (tx, rx) = channel();
+                receivers.push(rx);
+                let local_regex = regex.clone();
+                scope.spawn(move || {
+                    let mut local_matches = vec![];
+                    for content in chunk.iter() {
+                        if local_regex.is_match(content) {
+                            local_matches.push(content.clone());
+                        }
+                    }
+                    let _ = tx.send(local_matches);
+                });
+            }
+        });
+
+        for receiver in receivers.iter() {
+            let local_matches = receiver.recv().unwrap();
+            matched_results.extend(local_matches);
+        }
+        self.filter_string = regex.to_string();
+
+        self.filter_applied = true;
+        self.filtered_results = matched_results.clone();
+        matched_results
+    }
+
+    fn apply_to_all(&mut self, regex: Regex) -> Vec<String> {
         let mut matched_results = vec![];
         let mut receivers = vec![];
         crossbeam::scope(|scope| {
@@ -82,17 +137,6 @@ impl ResultSet {
         self.filter_applied = true;
         self.filtered_results = matched_results.clone();
         matched_results
-    }
-
-    pub fn number_of_results(&self) -> usize {
-        self.results.len()
-    }
-
-    // ------ private methods ----------//
-
-    fn re_run_filter(&mut self) {
-        let string = self.filter_string.clone();
-        self.apply_filter(Regex::new(&string).unwrap());
     }
 }
 
