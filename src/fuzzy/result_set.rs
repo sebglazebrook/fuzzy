@@ -3,7 +3,7 @@ use regex::Regex;
 use std::sync::mpsc::channel;
 
 pub struct ResultSet {
-    pub results: Vec<String>,
+    results: Vec<String>,
 }
 
 impl ResultSet {
