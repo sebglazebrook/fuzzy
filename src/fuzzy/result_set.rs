@@ -1,15 +1,30 @@
 use crossbeam;
 use regex::Regex;
 use std::sync::mpsc::channel;
+use std::sync::Mutex;
+
+struct Filter {
+    regex: Regex
+}
+
+impl Filter {
+
+    pub fn new() -> Filter {
+        Filter { regex: Regex::new("*").unwrap() }
+    }
+}
 
 pub struct ResultSet {
     results: Vec<String>,
+    filtered_results: Vec<String>,
+    filter_string: String,
+    filter_applied: bool
 }
 
 impl ResultSet {
 
     pub fn new() -> ResultSet {
-        ResultSet { results: vec![]}
+        ResultSet { results: vec![], filter_string: String::from("*"), filter_applied: false, filtered_results: vec![] }
     }
 
     pub fn add_many(&mut self, results: Vec<String>, root_dir: &str) {
@@ -22,13 +37,21 @@ impl ResultSet {
             new.push(sanitized_string);
         }
         self.results.extend(new);
+        if self.filter_applied {
+            self.re_run_filter()
+        }
     }
 
     pub fn to_vec(&self) -> Vec<String> {
-        self.results.clone()
+        if self.filter_applied {
+            self.filtered_results.clone()
+
+        } else {
+            self.results.clone()
+        }
     }
 
-    pub fn apply_filter(&self, regex: Regex) -> Vec<String> {
+    pub fn apply_filter(&mut self, regex: Regex) -> Vec<String> {
         let mut matched_results = vec![];
         let mut receivers = vec![];
         crossbeam::scope(|scope| {
@@ -54,18 +77,28 @@ impl ResultSet {
             let local_matches = receiver.recv().unwrap();
             matched_results.extend(local_matches);
         }
+        self.filter_string = regex.to_string();
+
+        self.filter_applied = true;
+        self.filtered_results = matched_results.clone();
         matched_results
     }
 
-
     pub fn number_of_results(&self) -> usize {
         self.results.len()
+    }
+
+    // ------ private methods ----------//
+
+    fn re_run_filter(&mut self) {
+        let string = self.filter_string.clone();
+        self.apply_filter(Regex::new(&string).unwrap());
     }
 }
 
 impl Clone for ResultSet {
     
     fn clone(&self) -> ResultSet {
-        ResultSet { results: self.to_vec() }
+        ResultSet { results: self.to_vec(), filter_string: String::from("*"), filter_applied: self.filter_applied, filtered_results: self.filtered_results.clone() }
     }
 }

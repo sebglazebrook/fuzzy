@@ -86,7 +86,7 @@ impl FileFinder {
                 let events = search_phrases.export();
                 if events.len() > 0 {
                     let last_event = events.last().unwrap();
-                    let locked_result_set = result_set.lock().unwrap();
+                    let mut locked_result_set = result_set.lock().unwrap();
                     let filtered_results = locked_result_set.apply_filter(last_event.to_regex());
                     event_service.trigger_file_finder_event(filtered_results.clone());
                 } else {
