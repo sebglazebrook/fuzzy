@@ -1,18 +1,6 @@
 use crossbeam;
 use regex::Regex;
 use std::sync::mpsc::channel;
-use std::sync::Mutex;
-
-struct Filter {
-    regex: Regex
-}
-
-impl Filter {
-
-    pub fn new() -> Filter {
-        Filter { regex: Regex::new("*").unwrap() }
-    }
-}
 
 pub struct ResultSet {
     results: Vec<String>,
