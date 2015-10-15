@@ -11,10 +11,11 @@ path = "src/lib.rs"
 regex = "0.1.8"
 time = "0.1"
 crossbeam = "0.1.5"
+docopt = "*"
+rustc-serialize = "*"
 
 [dependencies.rustbox]
 git = "http://github.com/sebglazebrook/rustbox.git"
-# git = "file:/Users/sebastianglazebrook/code/github-forks/rustbox"
 
 [dependencies.clipboard]
 git = "https://github.com/aweinstock314/rust-clipboard.git"

@@ -4,8 +4,10 @@ version = "0.3.2"
 dependencies = [
  "clipboard 0.0.3 (git+https://github.com/aweinstock314/rust-clipboard.git)",
  "crossbeam 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "docopt 0.6.73 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustbox 0.7.1 (git+http://github.com/sebglazebrook/rustbox.git)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -58,6 +60,16 @@ dependencies = [
 name = "crossbeam"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "docopt"
+version = "0.6.73"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "regex 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strsim 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "gag"
@@ -179,6 +191,11 @@ dependencies = [
 [[package]]
 name = "rustc-serialize"
 version = "0.3.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "strsim"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
