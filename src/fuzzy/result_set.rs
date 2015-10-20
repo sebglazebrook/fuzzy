@@ -62,75 +62,53 @@ impl ResultSet {
     }
 
     fn apply_to_filtered(&mut self, regex: Regex) -> Vec<String> {
-        let mut matched_results = vec![];
-        let mut receivers = vec![];
-        crossbeam::scope(|scope| {
-            let filter_concurrency_limit = 8;
-            let chunk_length = self.results.len() / filter_concurrency_limit;
-            for chunk in self.filtered_results.chunks(chunk_length) {
-                let (tx, rx) = channel();
-                receivers.push(rx);
-                let local_regex = regex.clone();
-                scope.spawn(move || {
-                    let mut local_matches = vec![];
-                    for content in chunk.iter() {
-                        if local_regex.is_match(content) {
-                            local_matches.push(content.clone());
-                        }
-                    }
-                    let _ = tx.send(local_matches);
-                });
-            }
-        });
-
-        for receiver in receivers.iter() {
-            let local_matches = receiver.recv().unwrap();
-            matched_results.extend(local_matches);
-        }
+        self.filtered_results  = filter_collection(&mut self.filtered_results, &regex);
         self.filter_string = regex.to_string();
-
         self.filter_applied = true;
-        self.filtered_results = matched_results.clone();
-        matched_results
+        self.filtered_results.clone()
     }
 
     fn apply_to_all(&mut self, regex: Regex) -> Vec<String> {
-        let mut matched_results = vec![];
-        let mut receivers = vec![];
-        crossbeam::scope(|scope| {
-            let filter_concurrency_limit = 8;
-            let chunk_length = self.results.len() / filter_concurrency_limit;
-            for chunk in self.results.chunks(chunk_length) {
-                let (tx, rx) = channel();
-                receivers.push(rx);
-                let local_regex = regex.clone();
-                scope.spawn(move || {
-                    let mut local_matches = vec![];
-                    for content in chunk.iter() {
-                        if local_regex.is_match(content) {
-                            local_matches.push(content.clone());
-                        }
-                    }
-                    let _ = tx.send(local_matches);
-                });
-            }
-        });
-
-        for receiver in receivers.iter() {
-            let local_matches = receiver.recv().unwrap();
-            matched_results.extend(local_matches);
-        }
+        self.filtered_results = filter_collection(&mut self.results, &regex);
         self.filter_string = regex.to_string();
-
         self.filter_applied = true;
-        self.filtered_results = matched_results.clone();
-        matched_results
+        self.filtered_results.clone()
     }
 }
 
 impl Clone for ResultSet {
-    
+
     fn clone(&self) -> ResultSet {
         ResultSet { results: self.to_vec(), filter_string: String::from("*"), filter_applied: self.filter_applied, filtered_results: self.filtered_results.clone() }
     }
+}
+
+fn filter_collection(collection: &Vec<String>, regex: &Regex) -> Vec<String> {
+        let mut matched_results = vec![];
+        let mut receivers = vec![];
+
+        crossbeam::scope(|scope| {
+            let filter_concurrency_limit = 8;
+            let chunk_length = collection.len() / filter_concurrency_limit;
+            for chunk in collection.chunks(chunk_length) {
+                let (tx, rx) = channel();
+                receivers.push(rx);
+                let local_regex = regex.clone();
+                scope.spawn(move || {
+                    let mut local_matches = vec![];
+                    for content in chunk.iter() {
+                        if local_regex.is_match(content) {
+                            local_matches.push(content.clone());
+                        }
+                    }
+                    let _ = tx.send(local_matches);
+                });
+            }
+        });
+
+        for receiver in receivers.iter() {
+            let local_matches = receiver.recv().unwrap();
+            matched_results.extend(local_matches);
+        }
+        matched_results
 }
